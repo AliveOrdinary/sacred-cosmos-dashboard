@@ -142,6 +142,7 @@ function App() {
             addText={canvas.addText}
             handleGenerateCarousel={data.handleGenerateCarousel}
             handleGenerateSignCarousel={data.handleGenerateSignCarousel}
+            handleGenerateElementPosts={data.handleGenerateElementPosts}
             handleGenerateStories={data.handleGenerateStories}
           />
         </div>

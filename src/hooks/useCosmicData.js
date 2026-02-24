@@ -178,7 +178,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
   }
 
   // ---------------------------------------------------------------------------
-  // MANIFESTATION CAROUSEL  (existing feature, now with .post/.content fix)
+  // MANIFESTATION CAROUSEL  — also loads the social media caption
   // ---------------------------------------------------------------------------
   const handleGenerateCarousel = async () => {
     if (!cosmicData || cosmicData.length === 0) return
@@ -190,11 +190,16 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     try {
       const items = posts.map(p => ({
         title: p.theme.replace('_', ' ').toUpperCase(),
-        body: p.post || p.content || '',   // ← FIX: Sunday uses .post, rest-days use .content
+        body: p.post || p.content || '',
       }))
 
       const { newSlides, CW, CH } = await _buildSlides(items)
       await _loadIntoEditor(newSlides, CW, CH)
+
+      // Auto-load caption
+      if (payload.daily_content?.social_media_post) {
+        setPostCaption(payload.daily_content.social_media_post)
+      }
     } catch (e) {
       console.error('Failed to generate carousel:', e)
       alert('Failed to auto-generate carousel.')
@@ -204,33 +209,100 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
   }
 
   // ---------------------------------------------------------------------------
-  // INDIVIDUAL SIGN CAROUSEL  (12-slide daily horoscope)
+  // ELEMENT POSTS  (4-slide carousel: fire / earth / air / water)
   // ---------------------------------------------------------------------------
-  const handleGenerateSignCarousel = async () => {
+  const ELEMENTS = [
+    { key: 'fire_signs',  emoji: '🔥', label: 'FIRE SIGNS',  gradient: ['#dc2626', '#f97316'] },
+    { key: 'earth_signs', emoji: '🌍', label: 'EARTH SIGNS', gradient: ['#15803d', '#a16207'] },
+    { key: 'air_signs',   emoji: '💨', label: 'AIR SIGNS',   gradient: ['#0ea5e9', '#a855f7'] },
+    { key: 'water_signs', emoji: '💧', label: 'WATER SIGNS', gradient: ['#1d4ed8', '#06b6d4'] },
+  ]
+
+  const handleGenerateElementPosts = async () => {
+    if (!cosmicData || cosmicData.length === 0) return
+    const payload = cosmicData[0]
+    const ec = payload.element_content
+    if (!ec) return
+
+    const items = ELEMENTS
+      .filter(el => ec[el.key]?.message)
+      .map(el => {
+        // The message starts with the title in caps, then \n\n, then body
+        const raw = ec[el.key].message
+        const lines = raw.split('\n\n')
+        const title = `${el.emoji} ${lines[0] || el.label}`
+        const body = lines.slice(1).join('\n\n')
+        return { title, body, gradientColors: el.gradient }
+      })
+
+    if (items.length === 0) return
+
+    setIsLoading(true)
+    try {
+      const { newSlides, CW, CH } = await _buildSlides(items)
+      await _loadIntoEditor(newSlides, CW, CH)
+
+      // Build caption from call_to_action fields
+      const captionParts = ELEMENTS
+        .filter(el => ec[el.key]?.call_to_action)
+        .map(el => `${el.emoji} ${ec[el.key].call_to_action}`)
+      if (captionParts.length > 0) {
+        const base = payload.daily_content?.social_media_post || ''
+        setPostCaption(`${captionParts.join('\n\n')}\n\n${base}`.trim())
+      }
+    } catch (e) {
+      console.error('Failed to generate element posts:', e)
+      alert('Failed to auto-generate element posts.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // INDIVIDUAL SIGN CAROUSEL  — split into 2 posts of 6 signs each
+  //   part 1: ♈ Aries → ♍ Virgo    part 2: ♎ Libra → ♓ Pisces
+  // ---------------------------------------------------------------------------
+  const handleGenerateSignCarousel = async (part = 1) => {
     if (!cosmicData || cosmicData.length === 0) return
     const payload = cosmicData[0]
     const horoscopes = payload.daily_content?.individual_horoscopes
     if (!horoscopes) return
 
-    // Verify at least some sign data exists
-    const hasSignData = ZODIAC_SIGNS.some(s => horoscopes[s.key])
-    if (!hasSignData) return
+    const allSigns = ZODIAC_SIGNS.filter(s => horoscopes[s.key])
+    if (allSigns.length === 0) return
+
+    // Split into two halves
+    const mid = Math.ceil(allSigns.length / 2)
+    const signsForPart = part === 1 ? allSigns.slice(0, mid) : allSigns.slice(mid)
 
     setIsLoading(true)
     try {
-      const items = ZODIAC_SIGNS
-        .filter(s => horoscopes[s.key])   // only signs that have data
-        .map((sign, idx) => ({
-          title: `${sign.symbol} ${sign.name.toUpperCase()}`,
-          body: horoscopes[sign.key],
-          gradientColors: GRADIENTS[idx % GRADIENTS.length].colors,
-        }))
+      // Cosmic overview as the intro slide
+      const introSlide = horoscopes.cosmic_overview ? [{
+        title: "TODAY'S COSMIC ENERGY",
+        body: horoscopes.cosmic_overview,
+        gradientColors: ['#1a0533', '#4a1a7a'],
+      }] : []
+
+      const signSlides = signsForPart.map((sign, idx) => ({
+        title: `${sign.symbol} ${sign.name.toUpperCase()}`,
+        body: horoscopes[sign.key],
+        gradientColors: GRADIENTS[(part === 1 ? idx : idx + mid) % GRADIENTS.length].colors,
+      }))
+
+      const items = [...introSlide, ...signSlides]
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
         titleFontSize: 64,
         bodyFontStart: Math.round(30 * Math.sqrt(canvasDimensions.height / 1080)),
       })
       await _loadIntoEditor(newSlides, CW, CH)
+
+      // Auto-load caption
+      if (payload.daily_content?.social_media_post) {
+        const partLabel = part === 1 ? '(Part 1 of 2)' : '(Part 2 of 2)'
+        setPostCaption(`${partLabel}\n\n${payload.daily_content.social_media_post}`)
+      }
     } catch (e) {
       console.error('Failed to generate sign carousel:', e)
       alert('Failed to auto-generate sign carousel.')
@@ -305,6 +377,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     handleCopyCaption,
     handleGenerateCarousel,
     handleGenerateSignCarousel,
+    handleGenerateElementPosts,
     handleGenerateStories,
   }
 }

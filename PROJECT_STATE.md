@@ -20,6 +20,11 @@
 *   **Instagram Stories Pipeline:** New "Stories" button generates 3–5 portrait slides at 1080×1920 from `instagram_stories` or `daily_content.instagram_story`. Automatically switches the canvas to Story dimensions. Background gradients mapped from the n8n `background` hint strings via `STORY_BACKGROUNDS` constant.
 *   **Data Source Toggle:** Temporary Sunday/Rest Days toggle in the header allows testing both sample datasets. Will be replaced by database fetch later.
 *   **Shared Carousel Builder:** Extracted `_buildSlides` helper in `useCosmicData.js` to eliminate code duplication across all three carousel generators (manifestation, sign, stories).
+*   **Caption Auto-Loading:** Manifestation, Element Posts, and Sign Carousel generators now automatically populate the `PostCaptionCard` with the relevant `daily_content.social_media_post` text. Sign carousels prepend a "(Part 1 of 2)" / "(Part 2 of 2)" label. Stories intentionally do not load a caption.
+*   **Sign Carousel Split (2×6):** The Sign Carousel generator now accepts a `part` parameter (1 or 2), producing two separate posts: Part 1 covers ♈ Aries → ♍ Virgo, Part 2 covers ♎ Libra → ♓ Pisces. The `DataFeedCard` shows two buttons: "Signs ♈–♍" and "Signs ♎–♓".
+*   **Cosmic Overview Intro Slide:** Both sign carousel parts now prepend a "TODAY'S COSMIC ENERGY" intro slide from `horoscopes.cosmic_overview` before the 6 individual sign slides (7 slides total per part).
+*   **Element Posts Generator:** New `handleGenerateElementPosts` creates a 4-slide carousel (🔥 Fire, 🌍 Earth, 💨 Air, 💧 Water) from `element_content` messages with element-themed gradients. Caption is assembled from all four `call_to_action` fields.
+*   **DataFeedCard UI Cleanup:** Replaced the massive raw data dump (4 element cards + 5 manifestation cards + 1 cosmic overview + 12 horoscope cards) with a compact "Content Generators" panel. Shows only the 5 generator buttons + a date/counts summary line. Raw data is preserved behind a collapsed "Raw Data Preview" toggle for advanced use.
 
 ## 🐛 Known Bugs & Current Blockers
 
