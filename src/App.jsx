@@ -1,6 +1,6 @@
 import { useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { ImageDown, RefreshCw } from 'lucide-react'
+import { ImageDown, RefreshCw, LogOut, Loader2 } from 'lucide-react'
 import JSZip from "jszip"
 import { saveAs } from "file-saver"
 import * as fabric from "fabric"
@@ -8,14 +8,19 @@ import * as fabric from "fabric"
 import { useFabricCanvas } from "@/hooks/useFabricCanvas.jsx"
 import { useSlides } from "@/hooks/useSlides"
 import { useCosmicData } from "@/hooks/useCosmicData"
+import { useAuth } from "@/hooks/useAuth"
 
 import { CanvasArea } from "@/components/editor/CanvasArea"
 import { SlideTray } from "@/components/editor/SlideTray"
 import { EditorToolsCard } from "@/components/editor/EditorToolsCard"
 import { DataFeedCard } from "@/components/editor/DataFeedCard"
 import { PostCaptionCard } from "@/components/editor/PostCaptionCard"
+import { AiImageCard } from "@/components/editor/AiImageCard"
+import { useAiImage } from "@/hooks/useAiImage"
+import { LoginPage } from "@/components/LoginPage"
 
 function App() {
+  const { session, user, isLoading: authLoading, signIn, signOut } = useAuth()
   const canvasRef = useRef(null)
 
   // Slide state — editor is passed at call-time to break circular dependency
@@ -31,6 +36,9 @@ function App() {
 
   // n8n data + carousel generation
   const data = useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDimensions, setCanvasDimensions })
+
+  // AI image generation (Nano Banana)
+  const aiImage = useAiImage()
 
   // --- EXPORT ---
   const downloadAllSlides = async () => {
@@ -58,6 +66,19 @@ function App() {
     }
   }
 
+  // --- AUTH GATE ---
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-violet-500" />
+      </div>
+    )
+  }
+
+  if (!session) {
+    return <LoginPage signIn={signIn} />
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col p-8 gap-8">
 
@@ -76,28 +97,25 @@ function App() {
             <ImageDown size={16} className="mr-2" /> Download All (Zip)
           </Button>
 
-          {/* Temporary data source toggle — remove when DB is connected */}
+          {/* Data source toggle */}
           <div className="flex rounded-lg border border-slate-700 overflow-hidden">
-            <button
-              onClick={() => data.setDataSource('sunday')}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                data.dataSource === 'sunday'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Sunday
-            </button>
-            <button
-              onClick={() => data.setDataSource('restdays')}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                data.dataSource === 'restdays'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Rest Days
-            </button>
+            {[
+              { key: 'supabase', label: '⚡ Live' },
+              { key: 'sunday', label: 'Sunday' },
+              { key: 'restdays', label: 'Rest Days' },
+            ].map(src => (
+              <button
+                key={src.key}
+                onClick={() => data.setDataSource(src.key)}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  data.dataSource === src.key
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {src.label}
+              </button>
+            ))}
           </div>
 
           <Button
@@ -108,6 +126,17 @@ function App() {
             <RefreshCw size={16} className={`mr-2 ${data.isLoading ? 'animate-spin' : ''}`} />
             {data.isLoading ? "Pulling..." : "Pull New Data"}
           </Button>
+
+          <div className="flex items-center gap-2 ml-2 border-l border-slate-800 pl-4">
+            <span className="text-xs text-slate-600 hidden sm:inline">{user?.email}</span>
+            <button
+              onClick={signOut}
+              className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-800 transition-colors"
+              title="Sign out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -144,6 +173,17 @@ function App() {
             handleGenerateSignCarousel={data.handleGenerateSignCarousel}
             handleGenerateElementPosts={data.handleGenerateElementPosts}
             handleGenerateStories={data.handleGenerateStories}
+            handleGenerateWeeklyCarousel={data.handleGenerateWeeklyCarousel}
+            handleGenerateSpiritualPractice={data.handleGenerateSpiritualPractice}
+            handleGenerateManifestationFocus={data.handleGenerateManifestationFocus}
+          />
+
+          <AiImageCard
+            cosmicData={data.cosmicData}
+            aiImage={aiImage}
+            addImageToCanvas={null}
+            fillBackgroundWithImage={canvas.fillBackgroundWithImage}
+            editor={editor}
           />
         </div>
 
@@ -172,6 +212,7 @@ function App() {
             setPostCaption={data.setPostCaption}
             isCopied={data.isCopied}
             handleCopyCaption={data.handleCopyCaption}
+            cosmicData={data.cosmicData}
           />
         </div>
 

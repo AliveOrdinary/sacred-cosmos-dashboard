@@ -25,13 +25,31 @@
 *   **Cosmic Overview Intro Slide:** Both sign carousel parts now prepend a "TODAY'S COSMIC ENERGY" intro slide from `horoscopes.cosmic_overview` before the 6 individual sign slides (7 slides total per part).
 *   **Element Posts Generator:** New `handleGenerateElementPosts` creates a 4-slide carousel (🔥 Fire, 🌍 Earth, 💨 Air, 💧 Water) from `element_content` messages with element-themed gradients. Caption is assembled from all four `call_to_action` fields.
 *   **DataFeedCard UI Cleanup:** Replaced the massive raw data dump (4 element cards + 5 manifestation cards + 1 cosmic overview + 12 horoscope cards) with a compact "Content Generators" panel. Shows only the 5 generator buttons + a date/counts summary line. Raw data is preserved behind a collapsed "Raw Data Preview" toggle for advanced use.
+*   **N8N Data Structure Migration (Feb 24, 2026):** Updated all data access paths in `useCosmicData.js` and `DataFeedCard.jsx` to match the restructured n8n webhook payload. Three major key renames: `daily_content` → `daily_content_raw`, `element_content` → `element_content_raw`, `weekly_content` → `weekly_content_raw`. Pre-formatted outputs (`social_media_post`, `blog_content`, `video_script`, `twitter_thread`) moved from nested `daily_content` to top-level keys (`master_social_post`, `comprehensive_blog`, `daily_video_script`, `twitter_thread`). Dead `daily_content.instagram_story` fallback removed (stories now only at top-level `instagram_stories`). Weekly per-sign path simplified from `weekly_content.signs.{sign}` to `weekly_content_raw.{sign}`. Comprehensive `N8N_DATA_ANALYSIS.md` rewritten to reflect the new schema.
+*   **CTA Overlay Slides:** Manifestation and Element carousels now auto-append a final "✨ YOUR COSMIC INVITATION" slide using the `call_to_action` data. Element carousel combines all 4 element CTAs into one closing slide.
+*   **Weekly Forecast Carousel:** New `handleGenerateWeeklyCarousel(part)` generates a Sunday-only weekly forecast carousel split into 2 parts (♈–♍ / ♎–♓). Each sign slide shows condensed cosmic_energy + heart_guidance + life_purpose. Intro slide shows the weekly theme. Weekly buttons are conditionally hidden on rest days.
+*   **Spiritual Practice Card:** New `handleGenerateSpiritualPractice` generates a single "🧘 TODAY'S SPIRITUAL PRACTICE" slide from `daily_content_raw.individual_horoscopes.spiritual_practice` with teal-to-purple gradient.
+*   **Manifestation Focus Card:** New `handleGenerateManifestationFocus` generates a single "✨ MANIFESTATION FOCUS" slide from `daily_content_raw.manifestation_focus` with warm amber gradient.
+*   **AI Image Generator (Gemini):** New `AiImageCard` component + `useAiImage` hook. User-initiated only — never automatic. Uses Google's Gemini 2.5 Flash Image model via `generativelanguage.googleapis.com` (proxied through Vite dev server to bypass CORS). API key stored in `.env.local` (`VITE_GEMINI_API_KEY`). Prompts pre-filled from cosmic data (`cosmic_image_prompt` and `image_prompt`), preview with "Add to Canvas" and "Set as Background" actions.
+*   **Multi-Caption Selector:** Upgraded `PostCaptionCard` with tabbed caption variants — "Social Post" (master_social_post), "Element CTAs" (combined fire/earth/air/water CTAs), and "Weekly" (collective_message, Sunday only). User clicks tab to load variant, then freely edits.
+*   **Community Engagement Bank:** Collapsible "Community Questions" section in `DataFeedCard` showing 5 pre-generated engagement prompts from `element_content_raw.community_questions`, each with individual copy-to-clipboard button.
+*   **Supabase Integration (Feb 25, 2026):** Connected dashboard to Supabase for persistent storage and authentication.
+    *   **Database:** `cosmic_data` table with JSONB `payload` column, `date` (unique), `generation_timestamp`, `is_sunday` flag. RLS enabled — authenticated users can read, only service role can write.
+    *   **Auth:** Email/password login via `useAuth` hook + `LoginPage.jsx`. Auth gate in `App.jsx` — loading spinner → login page → editor. Sign-out button with user email in header.
+    *   **Live Data Fetching:** `useCosmicData.js` updated with "⚡ Live" data source that queries `cosmic_data` table for the latest day's payload. Handles string-wrapped payloads from n8n (auto-parses). Falls back to sample data via "Sunday"/"Rest Days" toggle for dev.
+    *   **n8n → Supabase:** Daily data pushed via n8n's built-in Supabase node (Create operation) directly into the `cosmic_data` table. No Edge Function needed.
+    *   **Environment:** `.env.local` holds `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_GEMINI_API_KEY`. Supabase client in `src/lib/supabase.js` uses publishable key (not legacy anon key).
+    *   **Vite Proxy:** `vite.config.js` proxies `/api/gemini` → `generativelanguage.googleapis.com` for CORS-free Gemini API calls from localhost.
+    *   **Migration file:** `supabase/migration.sql` for table + RLS policy creation.
 
 ## 🐛 Known Bugs & Current Blockers
 
 *   **Typography Scaling & Bounding Box Overflows (Fabric v7):**
     *   **Status:** **[RESOLVED]** — see Canvas CSS Scaling Fix above.
 *   **Manifestation Posts `.post` vs `.content` Field Inconsistency:**
-    *   **Status:** **[RESOLVED]** — carousel generator and DataFeedCard now use `post.post || post.content` fallback.
+    *   **Status:** **[RESOLVED]** — The n8n workflow now consistently uses `.post` in `element_content_raw.manifestation_posts[]` for both Sunday and rest-day data. The top-level `manifestation_posts[]` uses `.content`. The carousel generator reads from `element_content_raw` so this is no longer an issue. The `post.post || post.content` fallback remains as a safety net.
+*   **n8n Payload String Wrapping:**
+    *   **Status:** **[RESOLVED]** — Fixed by mapping `{{ $json }}` (raw object) instead of `{{ JSON.stringify($json) }}` in n8n's Supabase node. `useCosmicData.js` retains a `typeof payload === 'string' → JSON.parse()` safety net.
 
 ## 📝 Usage Notes
 
@@ -42,3 +60,5 @@
 *   **JSX in hooks:** Any hook file containing JSX (e.g. `renderToStaticMarkup(<Component />)`) **must** use the `.jsx` extension. Vite will not transform JSX in `.js` files — causes a silent white screen.
 *   **Hook dependency ordering:** `useSlides` receives `editor` at call-time (not hook-init-time) to avoid a circular dependency with `useFabricCanvas`. Slide mutations are wired in `App.jsx` as inline lambdas: `(idx, e) => slideManager.deleteSlide(editor, idx, e)`.
 *   **Font size scaling principle:** Title font is WIDTH-constrained (canvas is always 1080px wide across all formats — never scale title by height ratio). Body font uses `Math.sqrt(CH / 1080)` for mild height scaling.
+*   **Environment variables:** All secrets live in `.env.local` (git-ignored). Must prefix with `VITE_` for Vite to expose to client code. Restart dev server after editing `.env.local`.
+*   **Supabase RLS:** The `cosmic_data` table is read-only for authenticated users. Only the service role key (used by n8n) can insert/update data.
