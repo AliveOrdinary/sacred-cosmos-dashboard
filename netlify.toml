@@ -1,0 +1,8 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Tell Netlify's secret scanner to ignore the Supabase Publishable Key
+  # It is safe to expose in the browser because it is restricted by RLS policies
+  SECURE_SCAN_IGNORE = "VITE_SUPABASE_PUBLISHABLE_KEY"

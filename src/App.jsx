@@ -19,8 +19,7 @@ import { AiImageCard } from "@/components/editor/AiImageCard"
 import { useAiImage } from "@/hooks/useAiImage"
 import { LoginPage } from "@/components/LoginPage"
 
-function App() {
-  const { session, user, isLoading: authLoading, signIn, signOut } = useAuth()
+function Dashboard({ user, signOut }) {
   const canvasRef = useRef(null)
 
   // Slide state — editor is passed at call-time to break circular dependency
@@ -64,19 +63,6 @@ function App() {
       console.error("Export failed:", error)
       alert("Failed to export slides!")
     }
-  }
-
-  // --- AUTH GATE ---
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-violet-500" />
-      </div>
-    )
-  }
-
-  if (!session) {
-    return <LoginPage signIn={signIn} />
   }
 
   return (
@@ -219,6 +205,25 @@ function App() {
       </div>
     </div>
   )
+}
+
+function App() {
+  const { session, user, isLoading: authLoading, signIn, signOut } = useAuth()
+
+  // --- AUTH GATE ---
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-violet-500" />
+      </div>
+    )
+  }
+
+  if (!session) {
+    return <LoginPage signIn={signIn} />
+  }
+
+  return <Dashboard user={user} signOut={signOut} />
 }
 
 export default App

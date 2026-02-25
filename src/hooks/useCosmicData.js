@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import * as fabric from 'fabric'
 import { supabase } from '@/lib/supabase'
 import sundayData from '../../sample data sunday.json'
@@ -22,6 +22,15 @@ const SAMPLE_DATA = {
  */
 export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDimensions, setCanvasDimensions }) {
   const [isLoading, setIsLoading] = useState(false)
+  const editorRef = useRef(editor)
+  
+  console.log("[useCosmicData Render] Received editor:", editor ? "Valid Canvas" : "null")
+
+  useEffect(() => {
+    console.log("[useCosmicData useEffect] Editor prop changed to:", editor ? "Valid Canvas" : "null")
+    editorRef.current = editor
+  }, [editor])
+
   const [dataSource, setDataSource] = useState('supabase')  // 'supabase' | 'sunday' | 'restdays'
   const [cosmicData, setCosmicData] = useState(() => {
     try {
@@ -196,10 +205,16 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     setSlides(newSlides)
     setActiveSlideIndex(0)
 
-    editor.clear()
-    await editor.loadFromJSON(newSlides[0])
-    editor.setDimensions({ width: CW, height: CH })
-    editor.renderAll()
+    const ed = editorRef.current
+    if (!ed) {
+      console.warn("Editor instance is null, cannot load slides.")
+      return
+    }
+
+    ed.clear()
+    await ed.loadFromJSON(newSlides[0])
+    ed.setDimensions({ width: CW, height: CH })
+    ed.renderAll()
   }
 
   // ---------------------------------------------------------------------------
