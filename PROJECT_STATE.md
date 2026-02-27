@@ -2,6 +2,20 @@
 
 ## 🌟 Accomplishments
 
+*   **Automated Caption Generation (Feb 26, 2026):**
+    *   Implemented an automated caption build engine integrated directly into the UI generators. Populates the `PostCaptionCard` instantly upon carousel generation.
+    *   **Manifestation Posts:** Moved the `timing` data from the graphic to dynamically build the caption, adding a static text hook on the image. Appended relevant astrology hashtags.
+    *   **Element Posts:** Moved the `spiritual_practice` strings from the slide body into the generated caption.
+    *   **Contextual Hooks:** Created bespoke text builders for "Spiritual Practice", "Weekly Challenge", and "Weekly Overview" cards that combine API data (e.g. `weekly_theme` and `collective_message`) with friction-less emoji engagement prompts.
+*   **Generator Data Mapping Updates (Feb 26, 2026):**
+    *   **Element Posts:** Appended `spiritual_practice` and `call_to_action` to individual slide bodies, removing the final pooled CTA slide.
+    *   **Manifestation Posts:** Appended `timing` and `call_to_action` to individual slide bodies, removing the final pooled CTA slide.
+    *   **Daily Cosmic Overview:** Replaced the single-slide "Manifestation Focus" generator in the UI with a 4-slide "Daily Cosmic Overview (4)" carousel (`cosmic_overview`, `collective_guidance`, `timing_wisdom`, `manifestation_focus`).
+    *   **Weekly Signs Carousel:** Split the weekly sign slides into two slides per sign (Part 1: Energy/Heart/Purpose, Part 2: Insight/Moments/Challenge). Removed the intro slide. Scaled up body font size to match daily posts.
+    *   **Weekly Cosmic Overview:** Added a new 5-slide generator for the weekly theme, collective message, timing, practice, and manifestation focus.
+    *   **Weekly Challenge:** Added a dedicated single-slide generator for the weekly element challenge.
+    *   **Sign Carousel:** Removed the intro "Cosmic Energy" slide so the carousels start directly on Aries or Libra.
+    *   **Typography Engine Fixes:** Removed the massive 20px letter spacing on titles. Implemented dynamic title size reduction based on character length so long titles don't push body text off-screen. Increased body text scale factor for Signs carousels.
 *   **Fabric.js Canvas Integration:** Successfully integrated `fabric.js` (v7) into a React frontend to power the "Cosmic Editor" design canvas.
 *   **n8n Webhook Data Integration:** Connected the dashboard to an n8n webhook API to dynamically pull daily horoscope and manifestation posts into the "Data Feed" panel.
 *   **Dynamic Carousel Generation:** Implemented a feature to automatically parse the JSON data feed and construct a sequence of Instagram/Carousel slides pre-populated with titles, bodies, and styling.
@@ -41,6 +55,10 @@
     *   **Environment:** `.env.local` holds `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `VITE_GEMINI_API_KEY`. Supabase client in `src/lib/supabase.js` uses publishable key (not legacy anon key).
     *   **Vite Proxy:** `vite.config.js` proxies `/api/gemini` → `generativelanguage.googleapis.com` for CORS-free Gemini API calls from localhost.
     *   **Migration file:** `supabase/migration.sql` for table + RLS policy creation.
+    *   **Edge Functions (AI Image):** Moved the Gemini API call from frontend `fetch` to a deployed Supabase Edge Function (`generate-image`) to prevent API key exposure in the browser. Updated `useAiImage.js` to securely invoke `supabase.functions.invoke`.
+    *   **Netlify Deployment Config:** Created `netlify.toml` using `SECRETS_SCAN_OMIT_KEYS` to bypass aggressive, false-positive secret scanning for the safe `VITE_SUPABASE_PUBLISHABLE_KEY` and `VITE_SUPABASE_URL` variables.
+
+*   **React Hook Rules Enforcement (Canvas Null Bug Fix):** Solved the silent `editor is null` bug in generator callbacks by splitting the main entry point into `<App>` (Auth Gate) and `<Dashboard>` (Hook Initialization). This guarantees `useFabricCanvas` and `useCosmicData` never mount prematurely, fundamentally preventing stale closures.
 
 ## 🐛 Known Bugs & Current Blockers
 
@@ -62,3 +80,43 @@
 *   **Font size scaling principle:** Title font is WIDTH-constrained (canvas is always 1080px wide across all formats — never scale title by height ratio). Body font uses `Math.sqrt(CH / 1080)` for mild height scaling.
 *   **Environment variables:** All secrets live in `.env.local` (git-ignored). Must prefix with `VITE_` for Vite to expose to client code. Restart dev server after editing `.env.local`.
 *   **Supabase RLS:** The `cosmic_data` table is read-only for authenticated users. Only the service role key (used by n8n) can insert/update data.
+*   **React Hook Ordering (Rules of Hooks):** Never place `useFabricCanvas` or `useCosmicData` behind a conditional return (like an authentication loading spinner). This breaks the dependency array unmount/remount cycle and causes permanent stale closures. Always extract hooks into a child component (`<Dashboard>`) that only renders *after* the condition is met.
+
+## 🗂️ Content Generator Data Mapping
+Here is the definitive mapping of the UI buttons in the "Cosmic Editor" to the specific JSON fields they consume from the n8n payload:
+
+*   **Manifestation:** (Carousel) `element_content_raw.manifestation_posts[]`
+    *   Slides format: `theme` (title) + `post` or `content` + `call_to_action`
+    *   Caption: Built defensively from `timing` fields + specific manifestation hashtags.
+*   **Element Posts:** (4-Slide Carousel) `element_content_raw.{fire/earth/air/water}_signs`
+    *   Slides format: `message` + `call_to_action`
+    *   Caption: Extracted `spiritual_practice` fields + specific element hashtags.
+*   **Signs ♈–♍** & **Signs ♎–♓:** (Two 6-Slide Carousels) `daily_content_raw.individual_horoscopes`
+    *   Slides format: sign emoji/name (title) + `horoscope` (body)
+    *   Caption: Prepended with part label + `master_social_post`
+*   **Stories:** (Vertical Carousels) `instagram_stories[]`
+    *   Slides format: `text` (body) wrapped over `background` gradients.
+    *   Caption: (None auto-generated)
+*   **Daily Overview (4):** `daily_content_raw.individual_horoscopes`
+    *   Slide 1 (Today's Cosmic Energy): `cosmic_overview`
+    *   Slide 2 (Collective Guidance): `collective_guidance`
+    *   Slide 3 (Timing Wisdom): `timing_wisdom`
+    *   Slide 4 (Manifestation Focus): `manifestation_focus`
+    *   Caption: `master_social_post`
+*   **Spiritual Practice:** (Single Slide) `daily_content_raw.individual_horoscopes.spiritual_practice`
+    *   Caption: Customized hook + `manifestation_focus` + engagement prompt.
+
+*(The following buttons only appear when Sunday/Weekly data is present)*
+*   **Weekly Signs ♈–♍** & **Weekly Signs ♎–♓:** (Two 12-slide Carousels, 2 per sign) `weekly_content_raw.{sign}`
+    *   Slide 1: `cosmic_energy` + `heart_guidance` + `life_purpose`
+    *   Slide 2: `spiritual_insight` + `lucky_moments` + `gentle_challenge`
+    *   Caption: `weekly_theme` + Swipe through prompt + Weekly hashtags.
+*   **Weekly Overview (5):** `weekly_content_raw`
+    *   Slide 1 (This Week's Theme): `weekly_theme`
+    *   Slide 2 (Collective Message): `collective_message`
+    *   Slide 3 (Cosmic Timing): `cosmic_timing`
+    *   Slide 4 (Spiritual Practice): `spiritual_practice`
+    *   Slide 5 (Manifestation Focus): `manifestation_focus`
+    *   Caption: `weekly_theme` + Swipe through prompt + Weekly hashtags.
+*   **Weekly Challenge:** (Single Slide) `weekly_content_raw.weekly_challenge`
+    *   Caption: Customized hook + `collective_message` + heart emoji engagement prompt.

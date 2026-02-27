@@ -160,8 +160,10 @@ function Dashboard({ user, signOut }) {
             handleGenerateElementPosts={data.handleGenerateElementPosts}
             handleGenerateStories={data.handleGenerateStories}
             handleGenerateWeeklyCarousel={data.handleGenerateWeeklyCarousel}
+            handleGenerateWeeklyOverview={data.handleGenerateWeeklyOverview}
+            handleGenerateWeeklyChallenge={data.handleGenerateWeeklyChallenge}
             handleGenerateSpiritualPractice={data.handleGenerateSpiritualPractice}
-            handleGenerateManifestationFocus={data.handleGenerateManifestationFocus}
+            handleGenerateDailyOverview={data.handleGenerateDailyOverview}
           />
 
           <AiImageCard

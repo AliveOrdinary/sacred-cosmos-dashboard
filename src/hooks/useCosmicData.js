@@ -133,6 +133,15 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
         ]
       })
 
+      // Compute a scaled title font size based on text length so long titles don't consume the canvas
+      const titleLen = items[i].title.length
+      let scaledTitleSize = titleFontSize
+      if (titleLen > 30) {
+        scaledTitleSize = Math.max(36, titleFontSize - (titleLen - 30) * 1.5)
+      } else if (titleLen > 15) {
+        scaledTitleSize = Math.max(48, titleFontSize - (titleLen - 15) * 1)
+      }
+
       // --- TITLE ---
       const titleText = new fabric.Textbox(
         items[i].title,
@@ -145,9 +154,9 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
           fontFamily: opts.titleFont || 'Inter',
           fill: opts.titleColor || '#FCD34D',
           textAlign: 'center',
-          fontWeight: 'bold',
-          fontSize: titleFontSize,
-          charSpacing: 20,
+          fontWeight: opts.titleWeight || 'bold',
+          fontSize: scaledTitleSize,
+          charSpacing: 0,
         }
       )
       buildCanvas.add(titleText)
@@ -228,26 +237,27 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     setIsLoading(true)
     try {
-      const items = posts.map(p => ({
-        title: p.theme.replace('_', ' ').toUpperCase(),
-        body: p.post || p.content || '',
-      }))
+      const items = posts.map(p => {
+        let bodyText = p.post || p.content || ''
+        if (p.call_to_action) bodyText += `\n\n👇 ${p.call_to_action}`
+        bodyText += `\n\n👇 Read the caption for today's cosmic manifestation timing`
+        
+        return {
+          title: p.theme.replace(/_/g, ' ').toUpperCase(),
+          body: bodyText,
+        }
+      })
 
-      // CTA overlay — append a final slide if any post has a call_to_action
-      const lastCTA = [...posts].reverse().find(p => p.call_to_action)?.call_to_action
-      if (lastCTA) {
-        items.push({
-          title: '✨ YOUR COSMIC INVITATION',
-          body: lastCTA,
-          gradientColors: ['#1a0533', '#f59e0b'],
-        })
-      }
-
-      const { newSlides, CW, CH } = await _buildSlides(items)
+      const { newSlides, CW, CH } = await _buildSlides(items, {
+        titleFontSize: 58,
+      })
       await _loadIntoEditor(newSlides, CW, CH)
 
-      // Auto-load caption
-      if (payload.master_social_post) {
+      // Auto-load caption with timing from all posts
+      const timingParts = posts.filter(p => p.timing).map(p => `✨ ${p.theme.replace(/_/g, ' ').toUpperCase()}: ${p.timing}`)
+      if (timingParts.length > 0) {
+        setPostCaption(`${timingParts.join('\n\n')}\n\n#Manifestation #CosmicTiming #VedicAstrology`)
+      } else if (payload.master_social_post) {
         setPostCaption(payload.master_social_post)
       }
     } catch (e) {
@@ -274,42 +284,43 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     const ec = payload.element_content_raw
     if (!ec) return
 
-    const items = ELEMENTS
-      .filter(el => ec[el.key]?.message)
-      .map(el => {
-        // The message starts with the title in caps, then \n\n, then body
-        const raw = ec[el.key].message
-        const lines = raw.split('\n\n')
-        const title = `${el.emoji} ${lines[0] || el.label}`
-        const body = lines.slice(1).join('\n\n')
-        return { title, body, gradientColors: el.gradient }
-      })
-
-    if (items.length === 0) return
-
-    setIsLoading(true)
-    try {
-      // CTA overlay — append a combined CTA slide
-      const ctaParts = ELEMENTS
-        .filter(el => ec[el.key]?.call_to_action)
-        .map(el => `${el.emoji} ${ec[el.key].call_to_action}`)
-      if (ctaParts.length > 0) {
-        items.push({
-          title: '✨ YOUR COSMIC INVITATION',
-          body: ctaParts.join('\n\n'),
-          gradientColors: ['#1a0533', '#f59e0b'],
+      const items = ELEMENTS
+        .filter(el => ec[el.key]?.message)
+        .map(el => {
+          // The message starts with the title in caps, then \n\n, then body
+          const raw = ec[el.key].message
+          const lines = raw.split('\n\n')
+          const title = `${el.emoji} ${lines[0] || el.label}`
+          let body = lines.slice(1).join('\n\n')
+          
+          if (ec[el.key].call_to_action) {
+            body += `\n\n👇 ${ec[el.key].call_to_action}`
+          }
+          body += `\n\n👇 Read the caption for your element's daily spiritual practice`
+          
+          return { title, body, gradientColors: el.gradient }
         })
-      }
 
-      const { newSlides, CW, CH } = await _buildSlides(items)
-      await _loadIntoEditor(newSlides, CW, CH)
+      if (items.length === 0) return
 
-      // Build caption from call_to_action fields
-      if (ctaParts.length > 0) {
-        const base = payload.master_social_post || ''
-        setPostCaption(`${ctaParts.join('\n\n')}\n\n${base}`.trim())
-      }
-    } catch (e) {
+      setIsLoading(true)
+      try {
+        const { newSlides, CW, CH } = await _buildSlides(items, {
+          titleFontSize: 60,
+        })
+        await _loadIntoEditor(newSlides, CW, CH)
+
+        // Build caption from spiritual_practice fields
+        const practiceParts = ELEMENTS
+          .filter(el => ec[el.key]?.spiritual_practice)
+          .map(el => `${el.emoji} ${el.label}: ${ec[el.key].spiritual_practice}`)
+          
+        if (practiceParts.length > 0) {
+          setPostCaption(`${practiceParts.join('\n\n')}\n\n#AstrologyElements #SpiritualPractice #DailyRitual`)
+        } else if (payload.master_social_post) {
+          setPostCaption(payload.master_social_post)
+        }
+      } catch (e) {
       console.error('Failed to generate element posts:', e)
       alert('Failed to auto-generate element posts.')
     } finally {
@@ -336,24 +347,17 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     setIsLoading(true)
     try {
-      // Cosmic overview as the intro slide
-      const introSlide = horoscopes.cosmic_overview ? [{
-        title: "TODAY'S COSMIC ENERGY",
-        body: horoscopes.cosmic_overview,
-        gradientColors: ['#1a0533', '#4a1a7a'],
-      }] : []
-
       const signSlides = signsForPart.map((sign, idx) => ({
         title: `${sign.symbol} ${sign.name.toUpperCase()}`,
         body: horoscopes[sign.key],
         gradientColors: GRADIENTS[(part === 1 ? idx : idx + mid) % GRADIENTS.length].colors,
       }))
 
-      const items = [...introSlide, ...signSlides]
+      const items = [...signSlides]
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
         titleFontSize: 64,
-        bodyFontStart: Math.round(30 * Math.sqrt(canvasDimensions.height / 1080)),
+        bodyFontStart: Math.round(36 * Math.sqrt(canvasDimensions.height / 1080)),
       })
       await _loadIntoEditor(newSlides, CW, CH)
 
@@ -435,39 +439,48 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     setIsLoading(true)
     try {
-      // Intro slide with the weekly theme
-      const introSlide = [{
-        title: "🌟 THIS WEEK'S COSMIC THEME",
-        body: wc.weekly_theme,
-        gradientColors: ['#1e1b4b', '#6d28d9'],
-      }]
+      const items = []
 
-      const signSlides = signsForPart.map((sign, idx) => {
+      signsForPart.forEach((sign, idx) => {
         const data = wc[sign.key]
-        // Combine the 3 most impactful sub-fields for a condensed weekly card
-        const sections = [
-          data.cosmic_energy,
-          `❤️ ${data.heart_guidance}`,
-          `🎯 ${data.life_purpose}`,
-        ].filter(Boolean)
-        return {
-          title: `${sign.symbol} ${sign.name.toUpperCase()}`,
-          body: sections.join('\n\n'),
-          gradientColors: GRADIENTS[(part === 1 ? idx : idx + mid) % GRADIENTS.length].colors,
-        }
-      })
+        
+        // Slide 1: Energy, Heart, Purpose
+        const part1Body = [
+          `🌟 Cosmic Energy\n${data.cosmic_energy}`,
+          `💖 Heart Guidance\n${data.heart_guidance}`,
+          `🎯 Life Purpose\n${data.life_purpose}`
+        ].join('\n\n')
 
-      const items = [...introSlide, ...signSlides]
+        // Slide 2: Insight, Moments, Challenge
+        const part2Body = [
+          `🧘 Spiritual Insight\n${data.spiritual_insight}`,
+          `✨ Lucky Moments\n${data.lucky_moments}`,
+          `🌱 Gentle Challenge\n${data.gentle_challenge}`
+        ].join('\n\n')
+
+        const gradient = GRADIENTS[(part === 1 ? idx : idx + mid) % GRADIENTS.length].colors
+
+        items.push({
+          title: `${sign.symbol} ${sign.name.toUpperCase()}`,
+          body: part1Body,
+          gradientColors: gradient,
+        })
+
+        items.push({
+          title: `${sign.symbol} ${sign.name.toUpperCase()} (PART 2)`,
+          body: part2Body,
+          gradientColors: gradient,
+        })
+      })
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
         titleFontSize: 56,
-        bodyFontStart: Math.round(26 * Math.sqrt(canvasDimensions.height / 1080)),
+        bodyFontStart: Math.round(36 * Math.sqrt(canvasDimensions.height / 1080)),
       })
       await _loadIntoEditor(newSlides, CW, CH)
 
-      if (payload.master_social_post) {
-        const partLabel = part === 1 ? '(Part 1 of 2)' : '(Part 2 of 2)'
-        setPostCaption(`Weekly Forecast ${partLabel}\n\n${payload.master_social_post}`)
+      if (wc.weekly_theme) {
+        setPostCaption(`${wc.weekly_theme}\n\nSwipe through to see what the cosmos has in store for your sign this week! ✨👇\n\n#WeeklyHoroscope #CosmicForecast`)
       }
     } catch (e) {
       console.error('Failed to generate weekly carousel:', e)
@@ -499,8 +512,10 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
       })
       await _loadIntoEditor(newSlides, CW, CH)
 
-      if (payload.master_social_post) {
-        setPostCaption(payload.master_social_post)
+      if (payload.daily_content_raw?.individual_horoscopes?.manifestation_focus) {
+        setPostCaption(`Taking a moment to ground into today's cosmic energy. ✨\n\n${payload.daily_content_raw.individual_horoscopes.manifestation_focus}\n\nWill you be trying today's practice? Let me know how it feels below! 👇`)
+      } else {
+        setPostCaption(`Taking a moment to ground into today's cosmic energy. ✨\n\nWill you be trying today's practice? Let me know how it feels below! 👇`)
       }
     } catch (e) {
       console.error('Failed to generate spiritual practice:', e)
@@ -511,23 +526,51 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
   }
 
   // ---------------------------------------------------------------------------
-  // MANIFESTATION FOCUS CARD  (single slide)
+  // DAILY COSMIC OVERVIEW CARD (4-slide carousel)
   // ---------------------------------------------------------------------------
-  const handleGenerateManifestationFocus = async () => {
+  const handleGenerateDailyOverview = async () => {
     if (!cosmicData || cosmicData.length === 0) return
     const payload = cosmicData[0]
-    // Prefer the raw-level field, fall back to individual_horoscopes version
-    const focus = payload.daily_content_raw?.manifestation_focus
-      || payload.daily_content_raw?.individual_horoscopes?.manifestation_focus
-    if (!focus) return
+    const horoscopes = payload.daily_content_raw?.individual_horoscopes
+    if (!horoscopes) return
 
     setIsLoading(true)
     try {
-      const items = [{
-        title: '✨ MANIFESTATION FOCUS',
-        body: focus,
-        gradientColors: ['#78350f', '#f59e0b'],
-      }]
+      const items = []
+      
+      if (horoscopes.cosmic_overview) {
+        items.push({
+          title: "TODAY'S COSMIC ENERGY",
+          body: horoscopes.cosmic_overview,
+          gradientColors: GRADIENTS[3].colors, // Dark/Mystic
+        })
+      }
+      if (horoscopes.collective_guidance) {
+        items.push({
+          title: "COLLECTIVE GUIDANCE",
+          body: horoscopes.collective_guidance,
+          gradientColors: GRADIENTS[7].colors,
+        })
+      }
+      if (horoscopes.timing_wisdom) {
+        items.push({
+          title: "TIMING WISDOM",
+          body: horoscopes.timing_wisdom,
+          gradientColors: GRADIENTS[10].colors,
+        })
+      }
+      if (horoscopes.manifestation_focus) {
+        items.push({
+          title: "✨ MANIFESTATION FOCUS",
+          body: horoscopes.manifestation_focus,
+          gradientColors: ['#78350f', '#f59e0b'], // Warm Amber
+        })
+      }
+
+      if (items.length === 0) {
+        setIsLoading(false)
+        return
+      }
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
         titleFontSize: 56,
@@ -538,8 +581,127 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
         setPostCaption(payload.master_social_post)
       }
     } catch (e) {
-      console.error('Failed to generate manifestation focus:', e)
-      alert('Failed to auto-generate manifestation focus card.')
+      console.error('Failed to generate daily overview:', e)
+      alert('Failed to auto-generate daily overview carousel.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGenerateWeeklyOverview = async () => {
+    if (!cosmicData || cosmicData.length === 0) return
+    const payload = cosmicData[0]
+    if (!payload?.weekly_content_raw) {
+      alert("No weekly_content_raw object found in payload.")
+      return
+    }
+
+    if (!editor) {
+      alert('Editor not initialized!')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const wc = payload.weekly_content_raw
+
+      const items = []
+      
+      if (wc.weekly_theme) {
+        items.push({
+          title: "THIS WEEK'S THEME",
+          body: wc.weekly_theme,
+          gradientColors: ['#a855f7', '#ec4899'] // purpleToPink fallback
+        })
+      }
+
+      if (wc.collective_message) {
+        items.push({
+          title: "COLLECTIVE MESSAGE",
+          body: wc.collective_message,
+          gradientColors: ['#3b82f6', '#4f46e5'] // indigoBlue fallback
+        })
+      }
+
+      if (wc.cosmic_timing) {
+        items.push({
+          title: "COSMIC TIMING",
+          body: wc.cosmic_timing,
+          gradientColors: ['#1e40af', '#6b21a8'] // deepBlueToPurple fallback
+        })
+      }
+
+      if (wc.spiritual_practice) {
+        items.push({
+          title: "SPIRITUAL PRACTICE",
+          body: wc.spiritual_practice,
+          gradientColors: ['#0f766e', '#7e22ce'] // tealToPurple fallback
+        })
+      }
+
+      if (wc.manifestation_focus) {
+        items.push({
+          title: "MANIFESTATION FOCUS",
+          body: wc.manifestation_focus,
+          gradientColors: ['#b45309', '#ea580c'] // warmAmber fallback
+        })
+      }
+
+      if (items.length === 0) {
+        alert('No core weekly metadata found.')
+        setIsLoading(false)
+        return
+      }
+
+      const { newSlides, CW, CH } = await _buildSlides(items)
+      await _loadIntoEditor(newSlides, CW, CH)
+
+      if (wc.weekly_theme) {
+        setPostCaption(`${wc.weekly_theme}\n\nSwipe through to see what the cosmos has in store for your sign this week! ✨👇\n\n#WeeklyHoroscope #CosmicForecast`)
+      }
+    } catch (e) {
+      console.error('Failed to generate weekly overview:', e)
+      alert("Failed to generate weekly overview. Check console.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGenerateWeeklyChallenge = async () => {
+    if (!cosmicData || cosmicData.length === 0) return
+    const payload = cosmicData[0]
+    const wc = payload.weekly_content_raw
+    const weeklyChallenge = wc?.weekly_challenge
+    
+    if (!weeklyChallenge) {
+      alert("No weekly_content_raw.weekly_challenge object found in payload.")
+      return
+    }
+
+    if (!editor) {
+      alert('Editor not initialized!')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const items = [
+        {
+          title: "✨ WEEKLY CHALLENGE",
+          body: weeklyChallenge,
+          gradientColors: ['#4c1d95', '#7e22ce'] // mysticPurple fallback
+        }
+      ]
+
+      const { newSlides, CW, CH } = await _buildSlides(items)
+      await _loadIntoEditor(newSlides, CW, CH)
+
+      if (wc.collective_message) {
+        setPostCaption(`New week, new cosmic rhythm. 🌊\n\n${wc.collective_message}\n\nDrop a 🤍 in the comments if you are taking on this week's heart practice with me! Let's hold space for each other.`)
+      }
+    } catch (e) {
+      console.error('Failed to generate weekly challenge:', e)
+      alert("Failed to generate weekly challenge post. Check console.")
     } finally {
       setIsLoading(false)
     }
@@ -560,7 +722,9 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     handleGenerateElementPosts,
     handleGenerateStories,
     handleGenerateWeeklyCarousel,
+    handleGenerateWeeklyOverview,
+    handleGenerateWeeklyChallenge,
     handleGenerateSpiritualPractice,
-    handleGenerateManifestationFocus,
+    handleGenerateDailyOverview,
   }
 }

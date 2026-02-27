@@ -1,10 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Sparkles, Stars, Film, Flame, CalendarDays, ChevronDown, ChevronUp, Plus, BookOpen, Flower2, Calendar, MessageSquare, Copy, Check } from 'lucide-react'
+import { Sparkles, Stars, Film, Flame, CalendarDays, ChevronDown, ChevronUp, Plus, BookOpen, Flower2, Calendar, MessageSquare, Copy, Check, Target } from 'lucide-react'
 import { ZODIAC_SIGNS } from '@/lib/constants'
 import { useState } from 'react'
 
-export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, handleGenerateSignCarousel, handleGenerateElementPosts, handleGenerateStories, handleGenerateWeeklyCarousel, handleGenerateSpiritualPractice, handleGenerateManifestationFocus }) {
+export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, handleGenerateSignCarousel, handleGenerateElementPosts, handleGenerateStories, handleGenerateWeeklyCarousel, handleGenerateSpiritualPractice, handleGenerateDailyOverview, handleGenerateWeeklyOverview, handleGenerateWeeklyChallenge }) {
   const [showRawData, setShowRawData] = useState(false)
   const [showQuestions, setShowQuestions] = useState(false)
   const [copiedIdx, setCopiedIdx] = useState(null)
@@ -120,6 +120,20 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
               >
                 <Calendar size={14} className="mr-1.5" /> Weekly ♎–♓
               </Button>
+              <Button
+                onClick={handleGenerateWeeklyOverview}
+                size="sm"
+                className="bg-gradient-to-r from-purple-600 to-fuchsia-500 hover:from-purple-500 hover:to-fuchsia-400 text-white shadow-lg border-0"
+              >
+                <BookOpen size={14} className="mr-1.5" /> Weekly Overview (5)
+              </Button>
+              <Button
+                onClick={handleGenerateWeeklyChallenge}
+                size="sm"
+                className="bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white shadow-lg border-0"
+              >
+                <Target size={14} className="mr-1.5" /> Weekly Challenge
+              </Button>
             </>
           )}
 
@@ -135,11 +149,11 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
 
           {hasManifest && (
             <Button
-              onClick={handleGenerateManifestationFocus}
+              onClick={handleGenerateDailyOverview}
               size="sm"
               className="bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-white shadow-lg border-0"
             >
-              <BookOpen size={14} className="mr-1.5" /> Manifest
+              <BookOpen size={14} className="mr-1.5" /> Daily Overview (4)
             </Button>
           )}
         </div>
