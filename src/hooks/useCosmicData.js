@@ -88,6 +88,11 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     }
   }
 
+  useEffect(() => {
+    handleGenerate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataSource])
+
   const handleCopyCaption = async () => {
     try {
       await navigator.clipboard.writeText(postCaption)

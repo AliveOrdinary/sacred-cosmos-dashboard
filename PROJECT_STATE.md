@@ -2,6 +2,9 @@
 
 ## 🌟 Accomplishments
 
+*   **UI Cleanup & Auto-Fetch (Feb 26, 2026):**
+    *   Removed the manual "Pull New Data" button and Data Source toggle from `App.jsx`.
+    *   Updated `useCosmicData.js` to automatically fetch live Supabase data on component mount, streamlining the workflow now that n8n pushes data daily at 6 AM.
 *   **Automated Caption Generation (Feb 26, 2026):**
     *   Implemented an automated caption build engine integrated directly into the UI generators. Populates the `PostCaptionCard` instantly upon carousel generation.
     *   **Manifestation Posts:** Moved the `timing` data from the graphic to dynamically build the caption, adding a static text hook on the image. Appended relevant astrology hashtags.

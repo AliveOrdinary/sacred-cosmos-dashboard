@@ -83,35 +83,7 @@ function Dashboard({ user, signOut }) {
             <ImageDown size={16} className="mr-2" /> Download All (Zip)
           </Button>
 
-          {/* Data source toggle */}
-          <div className="flex rounded-lg border border-slate-700 overflow-hidden">
-            {[
-              { key: 'supabase', label: '⚡ Live' },
-              { key: 'sunday', label: 'Sunday' },
-              { key: 'restdays', label: 'Rest Days' },
-            ].map(src => (
-              <button
-                key={src.key}
-                onClick={() => data.setDataSource(src.key)}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                  data.dataSource === src.key
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {src.label}
-              </button>
-            ))}
-          </div>
-
-          <Button
-            onClick={data.handleGenerate}
-            disabled={data.isLoading}
-            className="bg-purple-600 hover:bg-purple-700 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-          >
-            <RefreshCw size={16} className={`mr-2 ${data.isLoading ? 'animate-spin' : ''}`} />
-            {data.isLoading ? "Pulling..." : "Pull New Data"}
-          </Button>
+          {/* Data is pulled automatically on load. Source toggle removed per user request for clean UI. */}
 
           <div className="flex items-center gap-2 ml-2 border-l border-slate-800 pl-4">
             <span className="text-xs text-slate-600 hidden sm:inline">{user?.email}</span>
