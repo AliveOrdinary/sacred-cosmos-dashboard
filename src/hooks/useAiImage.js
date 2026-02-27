@@ -30,8 +30,9 @@ export function useAiImage() {
     try {
       // Safely call the deployed edge function without exposing keys to the browser
       console.log('[useAiImage] Invoking Supabase edge function generate-image...')
+      const enhancedPrompt = `Generate a beautiful, high-quality image representing: ${prompt.trim()}. Very important: only return an image, no text.`
       const { data, error: functionError } = await supabase.functions.invoke('generate-image', {
-        body: { prompt: prompt.trim(), aspectRatio },
+        body: { prompt: enhancedPrompt, aspectRatio },
       })
 
       if (functionError) {

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Wand2, ImagePlus, Maximize, Loader2, ChevronDown, ChevronUp, X, AlertCircle } from 'lucide-react'
+import { Wand2, ImagePlus, Maximize, Layers, Loader2, ChevronDown, ChevronUp, X, AlertCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import * as fabric from 'fabric'
 
@@ -8,7 +8,7 @@ import * as fabric from 'fabric'
  * AI Image Generation card — user-initiated only.
  * Uses Gemini API (key from env) to generate images from cosmic prompts.
  */
-export function AiImageCard({ cosmicData, aiImage, addImageToCanvas, fillBackgroundWithImage, editor }) {
+export function AiImageCard({ cosmicData, aiImage, addImageToCanvas, fillBackgroundWithImage, editor, slides, setSlides }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [prompt, setPrompt] = useState('')
 
@@ -17,10 +17,9 @@ export function AiImageCard({ cosmicData, aiImage, addImageToCanvas, fillBackgro
   // Pre-fill prompt from cosmic data when data changes
   const payload = cosmicData?.[0]
   const cosmicImagePrompt = payload?.daily_content_raw?.individual_horoscopes?.cosmic_image_prompt
-  const shortImagePrompt = payload?.daily_content_raw?.image_prompt
-
+  
   useEffect(() => {
-    if (cosmicImagePrompt && !prompt) {
+    if (cosmicImagePrompt) {
       setPrompt(cosmicImagePrompt)
     }
   }, [cosmicImagePrompt])
@@ -69,12 +68,60 @@ export function AiImageCard({ cosmicData, aiImage, addImageToCanvas, fillBackgro
     imgEl.src = generatedImageUrl
   }
 
+  const handleSetAsBackgroundAll = () => {
+    if (!generatedImageUrl || !editor || !slides || !setSlides) return
+    const imgEl = new Image()
+    imgEl.crossOrigin = 'anonymous'
+    imgEl.onload = () => {
+      const fabricImg = new fabric.FabricImage(imgEl, {
+        originX: 'left',
+        originY: 'top',
+      })
+      
+      const dims = { width: editor.width || 1080, height: editor.height || 1080 }
+      const scale = Math.max(dims.width / fabricImg.width, dims.height / fabricImg.height)
+      
+      fabricImg.set({
+        scaleX: scale,
+        scaleY: scale,
+        originX: 'left',
+        originY: 'top',
+        left: 0,
+        top: 0
+      })
+      
+      // Update the active editor visually right away
+      editor.backgroundImage = fabricImg
+      editor.backgroundColor = null
+      editor.renderAll()
+      editor.fire('object:modified')
+      
+      // Prepare background JSON
+      const bgJson = fabricImg.toObject(['crossOrigin'])
+      
+      // Update ALL slides natively
+      const updatedSlides = slides.map(slideStr => {
+        const slide = typeof slideStr === 'string' ? JSON.parse(slideStr) : slideStr
+        const clone = JSON.parse(JSON.stringify(slide))
+        clone.backgroundImage = bgJson
+        clone.background = null // Remove any lingering background properties
+        return clone
+      })
+      
+      setSlides(updatedSlides)
+    }
+    imgEl.onerror = () => {
+      alert('Failed to apply image to all slides.')
+    }
+    imgEl.src = generatedImageUrl
+  }
+
   return (
     <Card className="bg-slate-900 border-slate-800 text-white shadow-xl overflow-hidden">
       {/* Header — always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/50 transition-colors"
+        className="w-full flex items-center justify-between px-4 hover:bg-slate-800/50 transition-colors"
       >
         <div className="flex items-center gap-2">
           <Wand2 size={16} className="text-violet-400" />
@@ -85,53 +132,29 @@ export function AiImageCard({ cosmicData, aiImage, addImageToCanvas, fillBackgro
       </button>
 
       {isExpanded && (
-        <CardContent className="p-4 pt-0 flex flex-col gap-3 border-t border-slate-800">
-
-          {/* Quick-fill buttons */}
-          {(cosmicImagePrompt || shortImagePrompt) && (
-            <div className="flex gap-1.5 flex-wrap mt-3">
-              {cosmicImagePrompt && (
-                <button
-                  onClick={() => setPrompt(cosmicImagePrompt)}
-                  className={`text-[10px] px-2 py-1 rounded border transition-colors ${prompt === cosmicImagePrompt ? 'border-violet-500 bg-violet-500/20 text-violet-300' : 'border-slate-700 text-slate-500 hover:border-slate-500'}`}
-                >
-                  🎨 Cosmic Scene
-                </button>
-              )}
-              {shortImagePrompt && (
-                <button
-                  onClick={() => setPrompt(shortImagePrompt)}
-                  className={`text-[10px] px-2 py-1 rounded border transition-colors ${prompt === shortImagePrompt ? 'border-violet-500 bg-violet-500/20 text-violet-300' : 'border-slate-700 text-slate-500 hover:border-slate-500'}`}
-                >
-                  🕉️ Vedic Short
-                </button>
-              )}
-            </div>
-          )}
+        <CardContent className="p-3 pt-0 flex flex-col gap-2 border-t border-slate-800">
 
           {/* Prompt textarea */}
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe the image you want to generate..."
-            className="w-full h-20 bg-slate-950 text-slate-300 p-3 text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none leading-relaxed"
+            className="w-full h-28 bg-slate-950/50 text-slate-300 p-3 text-xs sm:text-[13px] rounded-lg border border-slate-800 placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 resize-none leading-relaxed"
           />
 
           {/* Generate button */}
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => generateImage(prompt)}
-              disabled={isGenerating || !prompt.trim()}
-              size="sm"
-              className="flex-1 bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-500 hover:to-purple-600 text-white shadow-lg border-0 disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <><Loader2 size={14} className="mr-1.5 animate-spin" /> {progress}</>
-              ) : (
-                <><Wand2 size={14} className="mr-1.5" /> Generate</>
-              )}
-            </Button>
-          </div>
+          <Button
+            onClick={() => generateImage(prompt)}
+            disabled={isGenerating || !prompt.trim()}
+            size="sm"
+            className="w-full bg-gradient-to-r from-violet-600 to-purple-700 hover:from-violet-500 hover:to-purple-600 text-white shadow-md border-0 disabled:opacity-50 rounded-lg"
+          >
+            {isGenerating ? (
+              <><Loader2 size={14} className="mr-1.5 animate-spin" /> {progress}</>
+            ) : (
+              <><Wand2 size={14} className="mr-1.5" /> Generate</>
+            )}
+          </Button>
 
           {/* Error */}
           {error && (
@@ -165,14 +188,25 @@ export function AiImageCard({ cosmicData, aiImage, addImageToCanvas, fillBackgro
                 >
                   <ImagePlus size={14} className="mr-1.5" /> Add to Canvas
                 </Button>
-                <Button
-                  onClick={handleSetAsBackground}
-                  size="sm"
-                  variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
-                >
-                  <Maximize size={14} className="mr-1.5" /> Set as BG
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    onClick={handleSetAsBackground}
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white px-2"
+                  >
+                    <Maximize size={14} className="mr-1" /> BG
+                  </Button>
+                  <Button
+                    onClick={handleSetAsBackgroundAll}
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white px-2"
+                    title="Apply Background to All Slides"
+                  >
+                    <Layers size={14} className="mr-1" /> All
+                  </Button>
+                </div>
               </div>
             </div>
           )}

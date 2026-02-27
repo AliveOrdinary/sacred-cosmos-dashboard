@@ -7,7 +7,7 @@ import {
   Bold, Italic, Underline, ChevronUp, ChevronDown, Square, Circle,
   Triangle, Sparkles, Smartphone, RectangleHorizontal, Copy, Trash2, Maximize
 } from 'lucide-react'
-import { ICON_LIBRARY, FONTS, COLORS, GRADIENTS } from '@/lib/constants'
+import { ICON_LIBRARY, FONTS, COLORS, GRADIENTS, BACKGROUND_COLORS } from '@/lib/constants'
 
 export function EditorToolsCard({
   canvasDimensions, setCanvasDimensions,
@@ -25,32 +25,64 @@ export function EditorToolsCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
 
+        {/* --- Global Background Settings (Always Visible at Top) --- */}
+        <div className="flex flex-col gap-3 pb-4 border-b border-slate-800">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 block">Slide Background</span>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
+              {BACKGROUND_COLORS.map(color => (
+                <button
+                  key={color}
+                  onClick={() => updateBackgroundColor(color)}
+                  className={`shrink-0 w-8 h-8 rounded-full border-2 snap-center ${editor?.backgroundColor === color ? 'border-purple-500 scale-110' : 'border-slate-700 hover:scale-110 border-dashed'} transition-transform shadow-sm`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <span className="text-xs text-slate-500 uppercase tracking-wider mb-2 block">Gradients</span>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
+              {GRADIENTS.map(grad => (
+                <button
+                  key={grad.name}
+                  onClick={() => updateGradientBackground(grad.colors)}
+                  className="shrink-0 w-12 h-8 rounded border-2 border-slate-700 hover:scale-105 transition-transform shadow-sm snap-center"
+                  style={{ background: `linear-gradient(to bottom, ${grad.colors[0]}, ${grad.colors[1]})` }}
+                  title={grad.name}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Primary actions */}
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="secondary" onClick={() => addText()} className="flex gap-2 bg-slate-800 hover:bg-slate-700">
+          <Button size="sm" onClick={() => addText()} className="flex gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border-0">
             <Type size={16} /> Add Text
           </Button>
-          <Button onClick={open} variant="secondary" className="flex gap-2 bg-slate-800 hover:bg-slate-700 relative overflow-hidden">
+          <Button size="sm" onClick={open} className="flex gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border-0 relative overflow-hidden">
             <ImageIcon size={16} /> Upload Image
             <input {...getInputProps()} className="absolute inset-0 opacity-0 cursor-pointer hidden" />
           </Button>
         </div>
 
         {/* Shapes */}
-        <div className="grid grid-cols-3 gap-3 pb-4 border-b border-slate-800">
-          <Button variant="secondary" onClick={addRect} className="flex gap-2 bg-slate-800 hover:bg-slate-700">
+        <div className="grid grid-cols-3 gap-3 pb-3 border-b border-slate-800">
+          <Button size="sm" onClick={addRect} className="flex gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border-0">
             <Square size={16} /> Rect
           </Button>
-          <Button variant="secondary" onClick={addCircle} className="flex gap-2 bg-slate-800 hover:bg-slate-700">
+          <Button size="sm" onClick={addCircle} className="flex gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border-0">
             <Circle size={16} /> Circle
           </Button>
-          <Button variant="secondary" onClick={addTriangle} className="flex gap-2 bg-slate-800 hover:bg-slate-700">
+          <Button size="sm" onClick={addTriangle} className="flex gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border-0">
             <Triangle size={16} /> Tri
           </Button>
         </div>
 
         {/* Canvas Size Picker */}
-        <div className="flex flex-col gap-2 pb-4 border-b border-slate-800">
+        <div className="flex flex-col gap-2 pb-3 border-b border-slate-800">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Canvas Size</span>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -74,15 +106,15 @@ export function EditorToolsCard({
         </div>
 
         {/* Icon Library */}
-        <div className="pb-4 border-b border-slate-800">
+        <div className="pb-3 border-b border-slate-800">
           <span className="text-xs text-slate-500 uppercase tracking-wider block mb-2">Icon Library</span>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x flex-nowrap">
             {ICON_LIBRARY.map((asset) => (
               <Button
                 key={asset.name}
                 variant="ghost"
                 onClick={() => addIcon(asset.icon)}
-                className="p-2 h-10 w-10 border border-slate-700 hover:bg-slate-800 hover:border-slate-500 text-slate-400"
+                className="shrink-0 snap-center p-2 h-10 w-10 border border-slate-700 hover:bg-slate-800 hover:border-slate-500 text-slate-400"
               >
                 <asset.icon size={20} />
               </Button>
@@ -117,9 +149,9 @@ export function EditorToolsCard({
                 {/* Bold / Italic / Underline + Font Size */}
                 <div className="flex items-center justify-between">
                   <div className="flex rounded-md border border-slate-700 overflow-hidden">
-                    <button onClick={() => updateActiveObjectProp('fontWeight', activeObject.fontWeight === 'bold' ? 'normal' : 'bold')} className={`p-2 hover:bg-slate-800 ${activeObject.fontWeight === 'bold' ? 'bg-slate-800 text-white' : 'text-slate-500'}`}><Bold size={16}/></button>
-                    <button onClick={() => updateActiveObjectProp('fontStyle', activeObject.fontStyle === 'italic' ? 'normal' : 'italic')} className={`p-2 hover:bg-slate-800 border-x border-slate-700 ${activeObject.fontStyle === 'italic' ? 'bg-slate-800 text-white' : 'text-slate-500'}`}><Italic size={16}/></button>
-                    <button onClick={() => updateActiveObjectProp('underline', !activeObject.underline)} className={`p-2 hover:bg-slate-800 ${activeObject.underline ? 'bg-slate-800 text-white' : 'text-slate-500'}`}><Underline size={16}/></button>
+                    <button onClick={() => updateActiveObjectProp('fontWeight', activeObject.fontWeight === 'bold' ? 'normal' : 'bold')} className={`p-2 hover:bg-slate-800 ${activeObject.fontWeight === 'bold' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><Bold size={16}/></button>
+                    <button onClick={() => updateActiveObjectProp('fontStyle', activeObject.fontStyle === 'italic' ? 'normal' : 'italic')} className={`p-2 hover:bg-slate-800 border-x border-slate-700 ${activeObject.fontStyle === 'italic' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><Italic size={16}/></button>
+                    <button onClick={() => updateActiveObjectProp('underline', !activeObject.underline)} className={`p-2 hover:bg-slate-800 ${activeObject.underline ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><Underline size={16}/></button>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-500">Size:</span>
@@ -133,11 +165,11 @@ export function EditorToolsCard({
                 </div>
 
                 {/* Alignment + Glow */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mt-1">
                   <div className="flex rounded-md border border-slate-700 overflow-hidden">
-                    <button onClick={() => updateActiveObjectProp('textAlign', 'left')} className={`p-2 hover:bg-slate-800 ${activeObject.textAlign === 'left' ? 'bg-slate-800 text-white' : 'text-slate-500'}`}><AlignLeft size={16}/></button>
-                    <button onClick={() => updateActiveObjectProp('textAlign', 'center')} className={`p-2 hover:bg-slate-800 border-x border-slate-700 ${activeObject.textAlign === 'center' ? 'bg-slate-800 text-white' : 'text-slate-500'}`}><AlignCenter size={16}/></button>
-                    <button onClick={() => updateActiveObjectProp('textAlign', 'right')} className={`p-2 hover:bg-slate-800 ${activeObject.textAlign === 'right' ? 'bg-slate-800 text-white' : 'text-slate-500'}`}><AlignRight size={16}/></button>
+                    <button onClick={() => updateActiveObjectProp('textAlign', 'left')} className={`p-2 hover:bg-slate-800 ${activeObject.textAlign === 'left' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><AlignLeft size={16}/></button>
+                    <button onClick={() => updateActiveObjectProp('textAlign', 'center')} className={`p-2 hover:bg-slate-800 border-x border-slate-700 ${activeObject.textAlign === 'center' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><AlignCenter size={16}/></button>
+                    <button onClick={() => updateActiveObjectProp('textAlign', 'right')} className={`p-2 hover:bg-slate-800 ${activeObject.textAlign === 'right' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><AlignRight size={16}/></button>
                   </div>
                   <Button
                     variant="outline" size="sm"
@@ -204,31 +236,9 @@ export function EditorToolsCard({
             </div>
           </div>
         ) : (
-          /* Background picker — nothing selected */
-          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-4 py-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Slide Background</h4>
-            <div className="flex gap-2 flex-wrap">
-              {['#0B0914', '#1e1b4b', '#312e81', '#4c1d95', '#701a75', '#831843', '#171717', '#ffffff'].map(color => (
-                <button
-                  key={color}
-                  onClick={() => updateBackgroundColor(color)}
-                  className={`w-8 h-8 rounded-full border-2 ${editor?.backgroundColor === color ? 'border-purple-500 scale-110' : 'border-slate-700 hover:scale-110 border-dashed'} transition-transform shadow-sm`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-            <span className="text-xs text-slate-500 tracking-wider">Gradients</span>
-            <div className="flex gap-2 flex-wrap pb-2 border-b border-slate-800">
-              {GRADIENTS.map(grad => (
-                <button
-                  key={grad.name}
-                  onClick={() => updateGradientBackground(grad.colors)}
-                  className="w-12 h-8 rounded border-2 border-slate-700 hover:scale-105 transition-transform shadow-sm"
-                  style={{ background: `linear-gradient(to bottom, ${grad.colors[0]}, ${grad.colors[1]})` }}
-                  title={grad.name}
-                />
-              ))}
-            </div>
+          /* State when nothing is selected — background tools moved to top */
+          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-4 py-8 items-center justify-center opacity-50">
+             <span className="text-sm text-slate-500">Select an object to edit</span>
           </div>
         )}
 

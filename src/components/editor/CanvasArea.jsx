@@ -36,7 +36,7 @@ export function CanvasArea({ canvasRef, canvasDimensions, activeSlideIndex, isDr
 
   return (
     <Card
-      className={`bg-slate-900 border-slate-800 flex flex-col items-center justify-center p-8 shadow-2xl transition-all ${isDragActive ? 'border-purple-500 bg-purple-500/5' : ''}`}
+      className={`bg-slate-900 border-slate-800 flex flex-col items-center justify-center p-2 lg:p-6 pb-2 lg:pb-6 shadow-2xl transition-all ${isDragActive ? 'border-purple-500 bg-purple-500/5' : ''}`}
       {...getRootProps()}
     >
       {isDragActive && (
@@ -45,7 +45,7 @@ export function CanvasArea({ canvasRef, canvasDimensions, activeSlideIndex, isDr
         </div>
       )}
 
-      <div className="w-full flex justify-between items-center mb-6">
+      <div className="w-full flex justify-between items-center mb-2 lg:mb-6">
         <h3 className="text-slate-400 font-medium uppercase tracking-widest text-sm">
           Design Canvas - Slide {activeSlideIndex + 1}
         </h3>

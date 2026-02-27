@@ -8,11 +8,11 @@ export function SlideTray({ slides, activeSlideIndex, switchSlide, addNewSlide, 
         <div
           key={idx}
           onClick={() => switchSlide(idx)}
-          className={`group relative flex-shrink-0 w-24 h-24 rounded-md border-2 cursor-pointer transition-all flex items-center justify-center bg-slate-950
+          className={`group relative flex-shrink-0 w-16 h-16 lg:w-24 lg:h-24 rounded-md border-2 cursor-pointer transition-all flex items-center justify-center bg-slate-950
             ${activeSlideIndex === idx ? 'border-purple-500 scale-105 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'border-slate-700 hover:border-slate-500'}
           `}
         >
-          <span className={`text-xl font-bold ${activeSlideIndex === idx ? 'text-purple-400' : 'text-slate-600'}`}>
+          <span className={`text-lg lg:text-xl font-bold ${activeSlideIndex === idx ? 'text-purple-400' : 'text-slate-600'}`}>
             {idx + 1}
           </span>
 
@@ -38,10 +38,10 @@ export function SlideTray({ slides, activeSlideIndex, switchSlide, addNewSlide, 
 
       <button
         onClick={addNewSlide}
-        className="flex-shrink-0 w-24 h-24 rounded-md border-2 border-dashed border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer transition-all flex flex-col items-center justify-center text-slate-500"
+        className="flex-shrink-0 w-16 h-16 lg:w-24 lg:h-24 rounded-md border-2 border-dashed border-slate-700 hover:border-slate-500 hover:bg-slate-800 cursor-pointer transition-all flex flex-col items-center justify-center text-slate-500"
       >
-        <Plus size={24} className="mb-1" />
-        <span className="text-xs font-medium">Add Slide</span>
+        <Plus className="w-5 h-5 lg:w-6 lg:h-6 mb-0.5 lg:mb-1" />
+        <span className="text-[10px] lg:text-xs font-medium">Add Slide</span>
       </button>
     </div>
   )

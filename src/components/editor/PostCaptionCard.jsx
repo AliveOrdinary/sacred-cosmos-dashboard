@@ -59,8 +59,8 @@ export function PostCaptionCard({ postCaption, setPostCaption, isCopied, handleC
   }
 
   return (
-    <Card className="bg-slate-900 border-slate-800 text-white shadow-2xl mt-8">
-      <CardHeader className="pb-3 flex flex-row justify-between items-center border-b border-slate-800">
+    <Card className="bg-slate-900 border-slate-800 text-white shadow-xl">
+      <CardHeader className="p-4 pb-3 flex flex-row justify-between items-center border-b border-slate-800">
         <div>
           <CardTitle className="text-sm font-medium text-emerald-400">Post Caption</CardTitle>
           <CardDescription className="text-xs text-slate-500">Select a variant, then edit before exporting</CardDescription>
