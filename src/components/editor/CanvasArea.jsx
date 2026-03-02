@@ -20,23 +20,40 @@ export function CanvasArea({ canvasRef, canvasDimensions, activeSlideIndex, isDr
   useEffect(() => {
     const updateScale = () => {
       if (!containerRef.current) return
+      
       const containerWidth = containerRef.current.clientWidth
-      const maxDisplay = Math.min(containerWidth, 600)
-      const newScale = maxDisplay / canvasDimensions.width
-      setScale(newScale)
+      // We also want to constrain by container height so the canvas doesn't bleed off screen vertically
+      const containerHeight = containerRef.current.clientHeight
+      
+      const maxDisplayWidth = Math.min(containerWidth, 600)
+      const scaleByWidth = maxDisplayWidth / canvasDimensions.width
+      const scaleByHeight = containerHeight / canvasDimensions.height
+
+      // Use whichever scale is smaller to ensure it always fits entirely in the container
+      const newScale = Math.min(scaleByWidth, scaleByHeight)
+      
+      setScale(Math.max(0.1, newScale)) // Ensure scale doesn't go all the way to 0
     }
 
     updateScale()
+    // Re-scale on window resize or when canvas dimension choices change (square vs story)
     window.addEventListener('resize', updateScale)
-    return () => window.removeEventListener('resize', updateScale)
-  }, [canvasDimensions.width])
+    
+    // Slight delay to ensure flex layout has settled after sheet opens/closes
+    const timeoutId = setTimeout(updateScale, 50) 
+    
+    return () => {
+      window.removeEventListener('resize', updateScale)
+      clearTimeout(timeoutId)
+    }
+  }, [canvasDimensions.width, canvasDimensions.height])
 
   const scaledWidth = canvasDimensions.width * scale
   const scaledHeight = canvasDimensions.height * scale
 
   return (
     <Card
-      className={`bg-slate-900 border-slate-800 flex flex-col items-center justify-center p-2 lg:p-6 pb-2 lg:pb-6 shadow-2xl transition-all ${isDragActive ? 'border-purple-500 bg-purple-500/5' : ''}`}
+      className={`bg-slate-950 lg:bg-slate-900 border-none lg:border-solid lg:border-slate-800 w-full h-full flex flex-col items-center justify-center p-0 lg:p-6 pb-0 lg:pb-6 shadow-none lg:shadow-2xl transition-all ${isDragActive ? 'border-purple-500 bg-purple-500/5' : ''}`}
       {...getRootProps()}
     >
       {isDragActive && (
@@ -45,7 +62,8 @@ export function CanvasArea({ canvasRef, canvasDimensions, activeSlideIndex, isDr
         </div>
       )}
 
-      <div className="w-full flex justify-between items-center mb-2 lg:mb-6">
+      {/* Hidden on mobile, visible on desktop */}
+      <div className="hidden lg:flex w-full justify-between items-center mb-6">
         <h3 className="text-slate-400 font-medium uppercase tracking-widest text-sm">
           Design Canvas - Slide {activeSlideIndex + 1}
         </h3>
@@ -54,10 +72,10 @@ export function CanvasArea({ canvasRef, canvasDimensions, activeSlideIndex, isDr
         </span>
       </div>
 
-      {/* Container that holds the scaled canvas */}
+      {/* Container that holds the scaled canvas - flex-1 ensures it pushes to take all space */}
       <div
         ref={containerRef}
-        className="w-full flex justify-center"
+        className="w-full h-full flex items-center justify-center relative min-h-0"
       >
         {/*
           This wrapper has the SCALED dimensions and uses transform: scale()
@@ -65,7 +83,7 @@ export function CanvasArea({ canvasRef, canvasDimensions, activeSlideIndex, isDr
           canvas stays positioned correctly.
         */}
         <div
-          className="border border-slate-700 shadow-2xl rounded overflow-hidden"
+          className="border border-slate-800 shadow-[0_0_20px_rgba(0,0,0,0.3)] rounded overflow-hidden"
           style={{
             width: scaledWidth,
             height: scaledHeight,

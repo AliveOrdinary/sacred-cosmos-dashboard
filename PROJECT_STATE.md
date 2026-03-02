@@ -14,7 +14,13 @@
 *   **Mobile-First Responsive UI (Feb 26, 2026):**
     *   Transitioned to a touch-optimized mobile layout while preserving the dual-column desktop experience.
     *   Moved the Canvas (`CanvasArea`) to the top of the mobile order (`order-1`) so it's always immediately visible without scrolling.
-    *   Implemented a floating frosted-glass bottom navigation bar using Apple-style "Liquid" tab concepts, mapped directly to control the visibility of the internal tool panels (Generate, Tools, Caption, AI Image).
+    *   **Lightroom/Snapseed-Style Mobile-Native Tools (March 2, 2026):** Major mobile UX overhaul. Canvas is fixed at `h-[48vh]` at the top, slide tray directly below, then a scrollable tool content area fills the remaining space between the slides and the bottom tab bar. Created a purpose-built `MobileToolsPanel.jsx` component with 4 touch-native sub-panels — **not** reusing any desktop card components on mobile:
+        *   **Generate panel:** 2-column grid of large gradient-pill touch targets (≥48px).
+        *   **Tools panel:** Horizontal scroll strips for background colors (36px circles) and gradients, 4-column icon grid for quick add actions (Text/Image/Rect/Circle), inline canvas size pills, scrollable icon library (44×44px), and compact object editor with touch-friendly sliders.
+        *   **Caption panel:** Pill variant tabs, full-height textarea, floating copy button.
+        *   **AI panel:** Compact prompt textarea, large generate button, image preview with Add/BG/All actions.
+    *   Tab bar pinned at the very bottom with `pb-safe` for iPhone home bar safe area. All touch targets ≥44px with `active:scale-95` press feedback and `rounded-xl` surfaces.
+    *   Deleted the old `MobileToolSheet.jsx` overlay component — tools render inline in the layout flow.
     *   Upgraded buttons across `DataFeedCard` to use 44px minimum height touch-targets on mobile screens.
     *   Made the top navigation header sticky allowing quick downloading regardless of scroll position.
 *   **UI Cleanup & Auto-Fetch (Feb 26, 2026):**

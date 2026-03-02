@@ -54,12 +54,12 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
         </div>
 
         {/* --- Generator Buttons --- */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x lg:flex-wrap lg:overflow-x-visible lg:pb-0">
           {payload.element_content_raw?.manifestation_posts && (
             <Button
               onClick={handleGenerateCarousel}
               size="sm"
-              className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white shadow-lg border-0"
+              className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white shadow-lg border-0"
             >
               <Sparkles size={14} className="mr-1.5" /> Manifestation
             </Button>
@@ -69,7 +69,7 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
             <Button
               onClick={handleGenerateElementPosts}
               size="sm"
-              className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-emerald-500 to-teal-700 hover:from-emerald-400 hover:to-teal-600 text-white shadow-lg border-0"
+              className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-emerald-500 to-teal-700 hover:from-emerald-400 hover:to-teal-600 text-white shadow-lg border-0"
             >
               <Flame size={14} className="mr-1.5" /> Elements
             </Button>
@@ -80,14 +80,14 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
               <Button
                 onClick={() => handleGenerateSignCarousel(1)}
                 size="sm"
-                className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-indigo-500 to-purple-700 hover:from-indigo-400 hover:to-purple-600 text-white shadow-lg border-0"
+                className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-indigo-500 to-purple-700 hover:from-indigo-400 hover:to-purple-600 text-white shadow-lg border-0"
               >
                 <Stars size={14} className="mr-1.5" /> Signs ♈–♍
               </Button>
               <Button
                 onClick={() => handleGenerateSignCarousel(2)}
                 size="sm"
-                className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-purple-600 to-indigo-800 hover:from-purple-500 hover:to-indigo-700 text-white shadow-lg border-0"
+                className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-purple-600 to-indigo-800 hover:from-purple-500 hover:to-indigo-700 text-white shadow-lg border-0"
               >
                 <Stars size={14} className="mr-1.5" /> Signs ♎–♓
               </Button>
@@ -98,7 +98,7 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
             <Button
               onClick={handleGenerateStories}
               size="sm"
-              className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-pink-500 to-rose-700 hover:from-pink-400 hover:to-rose-600 text-white shadow-lg border-0"
+              className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-pink-500 to-rose-700 hover:from-pink-400 hover:to-rose-600 text-white shadow-lg border-0"
             >
               <Film size={14} className="mr-1.5" /> Stories
             </Button>
@@ -109,28 +109,28 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
               <Button
                 onClick={() => handleGenerateWeeklyCarousel(1)}
                 size="sm"
-                className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-blue-500 to-indigo-700 hover:from-blue-400 hover:to-indigo-600 text-white shadow-lg border-0"
+                className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-blue-500 to-indigo-700 hover:from-blue-400 hover:to-indigo-600 text-white shadow-lg border-0"
               >
                 <Calendar size={14} className="mr-1.5" /> Weekly ♈–♍
               </Button>
               <Button
                 onClick={() => handleGenerateWeeklyCarousel(2)}
                 size="sm"
-                className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-indigo-600 to-blue-800 hover:from-indigo-500 hover:to-blue-700 text-white shadow-lg border-0"
+                className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-indigo-600 to-blue-800 hover:from-indigo-500 hover:to-blue-700 text-white shadow-lg border-0"
               >
                 <Calendar size={14} className="mr-1.5" /> Weekly ♎–♓
               </Button>
               <Button
                 onClick={handleGenerateWeeklyOverview}
                 size="sm"
-                className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-purple-600 to-fuchsia-500 hover:from-purple-500 hover:to-fuchsia-400 text-white shadow-lg border-0"
+                className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-purple-600 to-fuchsia-500 hover:from-purple-500 hover:to-fuchsia-400 text-white shadow-lg border-0"
               >
                 <BookOpen size={14} className="mr-1.5" /> Weekly Overview (5)
               </Button>
               <Button
                 onClick={handleGenerateWeeklyChallenge}
                 size="sm"
-                className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white shadow-lg border-0"
+                className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white shadow-lg border-0"
               >
                 <Target size={14} className="mr-1.5" /> Weekly Challenge
               </Button>
@@ -141,7 +141,7 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
             <Button
               onClick={handleGenerateSpiritualPractice}
               size="sm"
-              className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-teal-500 to-purple-700 hover:from-teal-400 hover:to-purple-600 text-white shadow-lg border-0"
+              className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-teal-500 to-purple-700 hover:from-teal-400 hover:to-purple-600 text-white shadow-lg border-0"
             >
               <Flower2 size={14} className="mr-1.5" /> Practice
             </Button>
@@ -151,7 +151,7 @@ export function DataFeedCard({ cosmicData, addText, handleGenerateCarousel, hand
             <Button
               onClick={handleGenerateDailyOverview}
               size="sm"
-              className="min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-white shadow-lg border-0"
+              className="shrink-0 min-h-[38px] lg:min-h-0 py-1.5 lg:py-0 text-xs bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-white shadow-lg border-0"
             >
               <BookOpen size={14} className="mr-1.5" /> Daily Overview (4)
             </Button>
