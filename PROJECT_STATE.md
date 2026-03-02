@@ -84,6 +84,8 @@
 
 *   **React Hook Rules Enforcement (Canvas Null Bug Fix):** Solved the silent `editor is null` bug in generator callbacks by splitting the main entry point into `<App>` (Auth Gate) and `<Dashboard>` (Hook Initialization). This guarantees `useFabricCanvas` and `useCosmicData` never mount prematurely, fundamentally preventing stale closures.
 
+*   **Canvas Ref Deduplication (March 2, 2026):** Fixed a bug where generator buttons produced content (slides & captions updated) but the canvas stayed blank. Root cause: two `<CanvasArea>` components (one in the desktop grid, one in the mobile section) shared the same `canvasRef` — Fabric.js painted to whichever React last attached the ref to, not necessarily the visible one. Fix: added an `isMobile` state via `window.matchMedia('(min-width: 1024px)')` in `Dashboard` that conditionally renders `<CanvasArea>` in exactly ONE location — inside the desktop 8-col grid when `!isMobile`, and inside the mobile flex column when `isMobile`. This also restored the desktop 2-column layout that broke when the canvas was moved outside the grid.
+
 ## 🐛 Known Bugs & Current Blockers
 
 *   **Typography Scaling & Bounding Box Overflows (Fabric v7):**
@@ -104,6 +106,7 @@
 *   **Font size scaling principle:** Title font is WIDTH-constrained (canvas is always 1080px wide across all formats — never scale title by height ratio). Body font uses `Math.sqrt(CH / 1080)` for mild height scaling.
 *   **Environment variables:** All secrets live in `.env.local` (git-ignored). Must prefix with `VITE_` for Vite to expose to client code. Restart dev server after editing `.env.local`.
 *   **Supabase RLS:** The `cosmic_data` table is read-only for authenticated users. Only the service role key (used by n8n) can insert/update data.
+*   **Single `<CanvasArea>` rule:** Never render two `<CanvasArea>` components with the same `canvasRef`. Use the `isMobile` media-query state in `Dashboard` to conditionally mount it in exactly one place. Duplicating it causes Fabric.js to paint to the wrong (hidden) canvas element.
 *   **React Hook Ordering (Rules of Hooks):** Never place `useFabricCanvas` or `useCosmicData` behind a conditional return (like an authentication loading spinner). This breaks the dependency array unmount/remount cycle and causes permanent stale closures. Always extract hooks into a child component (`<Dashboard>`) that only renders *after* the condition is met.
 
 ## 🗂️ Content Generator Data Mapping

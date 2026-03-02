@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ImageDown, RefreshCw, LogOut, Loader2, Sparkles, Wand2, Type, Image as ImageIcon } from 'lucide-react'
 import JSZip from "jszip"
@@ -24,7 +24,16 @@ function Dashboard({ user, signOut }) {
   const canvasRef = useRef(null)
   
   // mobileTab tracks which tool panel is active on mobile. Always visible (Lightroom-style).
-  const [mobileTab, setMobileTab] = useState('generate') 
+  const [mobileTab, setMobileTab] = useState('generate')
+
+  // Track breakpoint so we render <CanvasArea> in exactly ONE place (prevents ref collision)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024)
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)')
+    const handler = (e) => setIsMobile(!e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
 
   // Slide state — editor is passed at call-time to break circular dependency
   const slideManager = useSlides()
@@ -105,21 +114,24 @@ function Dashboard({ user, signOut }) {
         </div>
       </div>
 
+
       {/* ===================== DESKTOP LAYOUT ===================== */}
       <div className="hidden lg:grid lg:grid-cols-12 gap-8 w-full max-w-7xl mx-auto flex-1 min-h-0 overflow-visible">
 
-        {/* RIGHT: Canvas + Slides */}
+        {/* RIGHT: Canvas + Slides + Caption */}
         <div className="lg:col-span-8 flex flex-col gap-6 lg:order-2">
-          <div className="flex-1 min-h-0 flex items-center justify-center relative">
-            <CanvasArea
-              canvasRef={canvasRef}
-              canvasDimensions={canvasDimensions}
-              activeSlideIndex={activeSlideIndex}
-              isDragActive={isDragActive}
-              getRootProps={getRootProps}
-              getInputProps={getInputProps}
-            />
-          </div>
+          {!isMobile && (
+            <div className="flex-1 min-h-0 flex items-center justify-center relative">
+              <CanvasArea
+                canvasRef={canvasRef}
+                canvasDimensions={canvasDimensions}
+                activeSlideIndex={activeSlideIndex}
+                isDragActive={isDragActive}
+                getRootProps={getRootProps}
+                getInputProps={getInputProps}
+              />
+            </div>
+          )}
           <SlideTray
             slides={slides}
             activeSlideIndex={activeSlideIndex}
@@ -188,20 +200,22 @@ function Dashboard({ user, signOut }) {
       </div>
 
       {/* ===================== MOBILE LAYOUT ===================== */}
-      {/* Lightroom-style: Canvas top → Slide tray → Tab strip → Inline tools */}
+      {/* Lightroom-style: Canvas (above) → Slide tray → Tool content → Tab bar at bottom */}
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden lg:hidden">
 
-        {/* CANVAS — fixed height, no wasted space */}
-        <div className="shrink-0 h-[48vh] flex items-center justify-center px-1">
-          <CanvasArea
-            canvasRef={canvasRef}
-            canvasDimensions={canvasDimensions}
-            activeSlideIndex={activeSlideIndex}
-            isDragActive={isDragActive}
-            getRootProps={getRootProps}
-            getInputProps={getInputProps}
-          />
-        </div>
+        {/* CANVAS — fixed height, only rendered on mobile */}
+        {isMobile && (
+          <div className="shrink-0 h-[48vh] flex items-center justify-center px-1">
+            <CanvasArea
+              canvasRef={canvasRef}
+              canvasDimensions={canvasDimensions}
+              activeSlideIndex={activeSlideIndex}
+              isDragActive={isDragActive}
+              getRootProps={getRootProps}
+              getInputProps={getInputProps}
+            />
+          </div>
+        )}
 
         {/* SLIDE TRAY — compact, right below canvas */}
         <div className="shrink-0 px-2 py-1">
