@@ -106,14 +106,7 @@ export function usePublish() {
         try {
           const response = await fetch(N8N_WEBHOOK_URL, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              // Cloudflare Access service token — needed in production (no Vite proxy)
-              ...(import.meta.env.VITE_CF_ACCESS_CLIENT_ID && {
-                'CF-Access-Client-Id': import.meta.env.VITE_CF_ACCESS_CLIENT_ID,
-                'CF-Access-Client-Secret': import.meta.env.VITE_CF_ACCESS_CLIENT_SECRET,
-              }),
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
             signal: controller.signal,
             keepalive: true,
