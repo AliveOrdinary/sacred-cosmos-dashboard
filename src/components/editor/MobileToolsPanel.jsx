@@ -7,8 +7,14 @@ import {
   Sparkles, Smartphone, RectangleHorizontal,
   Wand2, ImagePlus, Layers, Loader2, X, AlertCircle,
   Check, Flame, Stars, Film, CalendarDays, Calendar,
-  BookOpen, Flower2, MessageSquare, Target
+  BookOpen, Flower2, MessageSquare, Target,
+  Send, Instagram, Facebook
 } from 'lucide-react'
+
+const PLATFORMS = [
+  { id: 'instagram', label: 'Instagram', icon: Instagram, activeClass: 'bg-pink-500/20 text-pink-300 border-pink-500/50' },
+  { id: 'facebook',  label: 'Facebook',  icon: Facebook,  activeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/50' },
+]
 import { ICON_LIBRARY, FONTS, COLORS, GRADIENTS, BACKGROUND_COLORS } from '@/lib/constants'
 import { ZODIAC_SIGNS } from '@/lib/constants'
 import * as fabric from 'fabric'
@@ -361,8 +367,19 @@ function SliderRow({ label, min, max, step, value, onChange, display }) {
 // ═══════════════════════════════════════════════════════
 //  CAPTION PANEL
 // ═══════════════════════════════════════════════════════
-function CaptionPanel({ postCaption, setPostCaption, isCopied, handleCopyCaption, cosmicData }) {
+function CaptionPanel({
+  postCaption, setPostCaption, isCopied, handleCopyCaption, cosmicData,
+  publish, isPublishing, publishStatus, publishMessage, selectedPlatforms, togglePlatform, resetPublishStatus,
+  editor, slides, currentIndexRef,
+}) {
   const [activeTab, setActiveTab] = useState('social')
+
+  // Auto-clear banner after 5 s
+  useEffect(() => {
+    if (!publishStatus) return
+    const t = setTimeout(resetPublishStatus, 5000)
+    return () => clearTimeout(t)
+  }, [publishStatus, resetPublishStatus])
 
   const captionVariants = useMemo(() => {
     const variants = []
@@ -385,6 +402,7 @@ function CaptionPanel({ postCaption, setPostCaption, isCopied, handleCopyCaption
   }, [cosmicData])
 
   const handleTabClick = (v) => { setActiveTab(v.id); setPostCaption(v.text) }
+  const handlePublish = () => publish({ editor, slides, currentIndexRef, caption: postCaption })
 
   return (
     <div className="flex flex-col h-full">
@@ -421,6 +439,52 @@ function CaptionPanel({ postCaption, setPostCaption, isCopied, handleCopyCaption
         >
           {isCopied ? <Check size={16} /> : <Copy size={16} />}
         </button>
+      </div>
+
+      {/* ── PUBLISH SECTION ── */}
+      <div className="shrink-0 px-3 pb-3 flex flex-col gap-2">
+        {/* Platform toggles */}
+        <div className="flex gap-2">
+          {PLATFORMS.map(({ id, label, icon: Icon, activeClass }) => {
+            const active = selectedPlatforms?.includes(id)
+            return (
+              <button
+                key={id}
+                onClick={() => togglePlatform(id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all active:scale-95 ${
+                  active ? activeClass : 'bg-slate-800/60 text-slate-500 border-slate-700'
+                }`}
+              >
+                <Icon size={13} />
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Publish button */}
+        <button
+          onClick={handlePublish}
+          disabled={isPublishing || !selectedPlatforms?.length}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-700 text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-transform shadow-lg"
+        >
+          {isPublishing
+            ? <><Loader2 size={15} className="animate-spin" />{publishMessage || 'Publishing…'}</>
+            : <><Send size={15} />Publish to Social</>
+          }
+        </button>
+
+        {/* Status banner */}
+        {publishStatus === 'success' && (
+          <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 rounded-xl px-3 py-2 border border-emerald-500/20 animate-in fade-in">
+            <Check size={13} className="shrink-0" />{publishMessage}
+          </div>
+        )}
+        {publishStatus === 'error' && (
+          <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 rounded-xl px-3 py-2 border border-red-500/20 animate-in fade-in">
+            <AlertCircle size={13} className="shrink-0 mt-0.5" />{publishMessage}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -562,6 +626,7 @@ export function MobileToolsPanel({ activeTab, ...props }) {
     case 'edit':
       return <ToolsPanel {...props} />
     case 'caption':
+      // Pass all publish-related props through to CaptionPanel
       return <CaptionPanel {...props} />
     case 'ai':
       return <AiPanel {...props} />

@@ -9,6 +9,7 @@ import { useFabricCanvas } from "@/hooks/useFabricCanvas.jsx"
 import { useSlides } from "@/hooks/useSlides"
 import { useCosmicData } from "@/hooks/useCosmicData"
 import { useAuth } from "@/hooks/useAuth"
+import { usePublish } from "@/hooks/usePublish"
 
 import { CanvasArea } from "@/components/editor/CanvasArea"
 import { SlideTray } from "@/components/editor/SlideTray"
@@ -51,6 +52,9 @@ function Dashboard({ user, signOut }) {
 
   // AI image generation (Nano Banana)
   const aiImage = useAiImage()
+
+  // Publish to social (Supabase Storage → n8n webhook)
+  const publishHook = usePublish()
 
   // --- EXPORT ---
   const downloadAllSlides = async () => {
@@ -146,6 +150,16 @@ function Dashboard({ user, signOut }) {
             isCopied={data.isCopied}
             handleCopyCaption={data.handleCopyCaption}
             cosmicData={data.cosmicData}
+            editor={editor}
+            slides={slides}
+            currentIndexRef={currentIndexRef}
+            publish={publishHook.publish}
+            isPublishing={publishHook.isPublishing}
+            publishStatus={publishHook.publishStatus}
+            publishMessage={publishHook.publishMessage}
+            selectedPlatforms={publishHook.selectedPlatforms}
+            togglePlatform={publishHook.togglePlatform}
+            resetPublishStatus={publishHook.resetPublishStatus}
           />
         </div>
 
@@ -271,6 +285,14 @@ function Dashboard({ user, signOut }) {
             setPostCaption={data.setPostCaption}
             isCopied={data.isCopied}
             handleCopyCaption={data.handleCopyCaption}
+            currentIndexRef={currentIndexRef}
+            publish={publishHook.publish}
+            isPublishing={publishHook.isPublishing}
+            publishStatus={publishHook.publishStatus}
+            publishMessage={publishHook.publishMessage}
+            selectedPlatforms={publishHook.selectedPlatforms}
+            togglePlatform={publishHook.togglePlatform}
+            resetPublishStatus={publishHook.resetPublishStatus}
             // AI panel props
             aiImage={aiImage}
             slides={slides}
