@@ -41,11 +41,6 @@ export const handler = async (event) => {
   }
 
   try {
-    // Log exactly what we're sending so we can diagnose any mismatch
-    console.log('[publish-proxy] → URL:', webhookUrl)
-    console.log('[publish-proxy] → CF headers present:', !!process.env.CF_ACCESS_CLIENT_ID)
-    console.log('[publish-proxy] → body:', event.body?.slice(0, 200))
-
     // n8n is set to "Respond: Immediately" so this resolves quickly
     const res = await fetch(webhookUrl, {
       method: 'POST',
@@ -58,9 +53,7 @@ export const handler = async (event) => {
       },
       body: event.body,
     })
-
-    const responseText = await res.text()
-    console.log('[publish-proxy] ← status:', res.status, '| body:', responseText.slice(0, 200))
+    console.log('[publish-proxy] n8n responded:', res.status)
   } catch (err) {
     console.error('[publish-proxy] n8n fetch error:', err.message)
   }
