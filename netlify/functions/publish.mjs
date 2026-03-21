@@ -44,18 +44,21 @@ export default async (request, context) => {
   // for n8n's pipeline (which includes a 15-second Wait node).
   const body = await request.text()
 
-  // Don't await — let n8n process in the background
-  fetch(webhookUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(process.env.CF_ACCESS_CLIENT_ID && {
-        'CF-Access-Client-Id': process.env.CF_ACCESS_CLIENT_ID,
-        'CF-Access-Client-Secret': process.env.CF_ACCESS_CLIENT_SECRET,
-      }),
-    },
-    body,
-  }).catch((err) => console.error('[publish-proxy] n8n fetch error:', err))
+  // context.waitUntil keeps the function alive after responding so the n8n
+  // request completes even though we return 200 immediately.
+  context.waitUntil(
+    fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.CF_ACCESS_CLIENT_ID && {
+          'CF-Access-Client-Id': process.env.CF_ACCESS_CLIENT_ID,
+          'CF-Access-Client-Secret': process.env.CF_ACCESS_CLIENT_SECRET,
+        }),
+      },
+      body,
+    }).catch((err) => console.error('[publish-proxy] n8n fetch error:', err))
+  )
 
   return new Response(JSON.stringify({ status: 'queued' }), {
     status: 200,
