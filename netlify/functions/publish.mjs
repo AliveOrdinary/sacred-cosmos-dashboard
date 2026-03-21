@@ -1,53 +1,48 @@
 /**
- * Netlify serverless function: /api/publish  (via netlify.toml redirect)
+ * Netlify Function: /api/publish
  *
- * Proxies the publish payload to the n8n webhook, injecting Cloudflare Access
- * service token headers server-side so they are never exposed in the browser
- * bundle and CORS preflight issues are completely avoided.
+ * Proxies the publish payload to the n8n webhook with Cloudflare Access
+ * service token headers injected server-side. Because n8n is configured
+ * to "Respond: Immediately", the await resolves quickly and this function
+ * completes well within Netlify's 10-second timeout.
  *
- * Required environment variables (set in Netlify dashboard, no VITE_ prefix):
+ * Required Netlify env vars (no VITE_ prefix — server-only):
  *   N8N_WEBHOOK_TARGET        – full n8n production webhook URL
  *   CF_ACCESS_CLIENT_ID       – Cloudflare Access service token client ID
  *   CF_ACCESS_CLIENT_SECRET   – Cloudflare Access service token client secret
  */
 
-export default async (request, context) => {
-  const origin = request.headers.get('origin') ?? '*'
+export const handler = async (event) => {
+  const origin = event.headers.origin || '*'
 
-  // Handle CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Max-Age': '86400',
-      },
-    })
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
   }
 
-  if (request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: { ...corsHeaders, 'Access-Control-Max-Age': '86400' }, body: '' }
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method not allowed' }
   }
 
   const webhookUrl = process.env.N8N_WEBHOOK_TARGET
   if (!webhookUrl) {
-    return new Response(JSON.stringify({ error: 'N8N_WEBHOOK_TARGET not configured' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    console.error('[publish-proxy] N8N_WEBHOOK_TARGET not set')
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      body: JSON.stringify({ error: 'N8N_WEBHOOK_TARGET not configured' }),
+    }
   }
 
-  // Forward the payload to n8n with CF Access headers — fire and forget.
-  // We respond immediately with 200 so the browser doesn't time out waiting
-  // for n8n's pipeline (which includes a 15-second Wait node).
-  const body = await request.text()
-
-  // context.waitUntil keeps the function alive after responding so the n8n
-  // request completes even though we return 200 immediately.
-  context.waitUntil(
-    fetch(webhookUrl, {
+  try {
+    // n8n is set to "Respond: Immediately" so this resolves quickly
+    const res = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,17 +51,18 @@ export default async (request, context) => {
           'CF-Access-Client-Secret': process.env.CF_ACCESS_CLIENT_SECRET,
         }),
       },
-      body,
-    }).catch((err) => console.error('[publish-proxy] n8n fetch error:', err))
-  )
+      body: event.body,
+    })
 
-  return new Response(JSON.stringify({ status: 'queued' }), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': origin,
-    },
-  })
+    console.log('[publish-proxy] n8n responded:', res.status)
+  } catch (err) {
+    console.error('[publish-proxy] n8n fetch error:', err.message)
+  }
+
+  // Always return 200 to the browser — n8n processes asynchronously
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    body: JSON.stringify({ status: 'queued' }),
+  }
 }
-
-export const config = { path: '/api/publish' }

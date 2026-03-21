@@ -5,3 +5,8 @@
 [build.environment]
   # Tell Netlify's secret scanner to specifically ignore these public keys
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_PUBLISHABLE_KEY,VITE_SUPABASE_URL"
+
+[[redirects]]
+  from = "/api/publish"
+  to = "/.netlify/functions/publish"
+  status = 200
