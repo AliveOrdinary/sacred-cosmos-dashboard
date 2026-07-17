@@ -608,7 +608,10 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
         body: practice,
       }]
 
+      // Practice runs as a story in the posting rotation — build it 9:16 natively
       const { newSlides, CW, CH } = await _buildSlides(items, {
+        width: 1080,
+        height: 1920,
         titleFontSize: 52,
       })
       await _loadIntoEditor(newSlides, CW, CH)
