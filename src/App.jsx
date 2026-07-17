@@ -48,6 +48,33 @@ function Dashboard({ user, signOut }) {
   // Publish to social (Supabase Storage → n8n webhook)
   const publishHook = usePublish()
 
+  // Deep-link auto-generate: nudge links open /?generate=<type> and the right
+  // generator runs as soon as cosmic data is loaded. Story types also flip the
+  // publish toggle to Story so one tap less is needed.
+  const autoGenRanRef = useRef(false)
+  useEffect(() => {
+    if (autoGenRanRef.current) return
+    if (!data.cosmicData || data.cosmicData.length === 0) return
+    const gen = new URLSearchParams(window.location.search).get('generate')
+    if (!gen) return
+    autoGenRanRef.current = true
+    const run = {
+      overview: () => data.handleGenerateDailyOverview(),
+      manifestation: () => data.handleGenerateCarousel(),
+      elements: () => data.handleGenerateElementPosts(),
+      signs1: () => data.handleGenerateSignCarousel(1),
+      signs2: () => data.handleGenerateSignCarousel(2),
+      story: () => { publishHook.setPostType('story'); return data.handleGenerateStories() },
+      practice: () => { publishHook.setPostType('story'); return data.handleGenerateSpiritualPractice() },
+      weekly_overview: () => data.handleGenerateWeeklyOverview(),
+      weekly_signs1: () => data.handleGenerateWeeklyCarousel(1),
+      weekly_signs2: () => data.handleGenerateWeeklyCarousel(2),
+      weekly_challenge: () => data.handleGenerateWeeklyChallenge(),
+    }[gen]
+    if (run) run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.cosmicData])
+
   // Publish shortcut: header button jumps to the publish surface
   const hasContent = slides.some(sl => (sl.objects?.length ?? 0) > 0)
   const goToPublish = () => {
