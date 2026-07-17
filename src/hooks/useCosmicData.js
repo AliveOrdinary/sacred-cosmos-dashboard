@@ -3,7 +3,7 @@ import * as fabric from 'fabric'
 import { supabase } from '@/lib/supabase'
 import sundayData from '../../sample data sunday.json'
 import restdaysData from '../../sample data restdays.json'
-import { GRADIENTS, ZODIAC_SIGNS, STORY_BACKGROUNDS } from '@/lib/constants'
+import { ZODIAC_SIGNS, SLIDE_THEME, ELEMENT_ACCENTS } from '@/lib/constants'
 
 // Sample data for local development
 const SAMPLE_DATA = {
@@ -104,105 +104,188 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
   }
 
   // ---------------------------------------------------------------------------
-  // Shared carousel builder — takes an array of { title, body } and renders
-  // them as gradient-backed slides with iterative font scaling.
+  // Cosmic editorial slide builder.
+  // Every slide shares one ground (void + indigo bloom), Fraunces titles,
+  // Inter body, and an accent (gold by default, element tint on sign slides).
+  // Item shape: { eyebrow?, title?, body, glyph?, accent? }
   // ---------------------------------------------------------------------------
+  const _toTitleCase = (str) =>
+    String(str || '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+
+  const _cleanTitle = (str) =>
+    _toTitleCase(String(str || '').replace(/^[^\p{L}\p{N}]+/u, '').trim())
+
+  const _dateLabel = (payload) => {
+    const d = payload?.date ? new Date(payload.date) : new Date()
+    const valid = d instanceof Date && !isNaN(d)
+    return (valid ? d : new Date()).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+  }
+
   const _buildSlides = async (items, opts = {}) => {
     const CW = opts.width || canvasDimensions.width
     const CH = opts.height || canvasDimensions.height
+    const isStory = CH / CW > 1.3
+    const S = CW / 1080 // horizontal scale factor relative to design size
 
-    // PAD scales with height. Title is WIDTH-constrained (always 1080px wide)
-    const PAD = Math.round(CH * 0.074)
+    // The canvas measures text with whatever font is available *right now* —
+    // wait for the display/body fonts so slides don't render in a fallback.
+    try {
+      await Promise.all([
+        document.fonts.load(`600 64px ${SLIDE_THEME.titleFont}`),
+        document.fonts.load(`400 36px ${SLIDE_THEME.bodyFont}`),
+        document.fonts.load(`600 24px ${SLIDE_THEME.bodyFont}`),
+      ])
+    } catch { /* fabric falls back gracefully */ }
+
+    const PAD = Math.round(CW * 0.09)
     const safeW = CW - PAD * 2
-    const TITLE_TOP = PAD + 20
-    const BODY_GAP = Math.round(CH * 0.025)
-
-    const titleFontSize = opts.titleFontSize || 72
-    const bodyFontStart = opts.bodyFontStart || Math.round(38 * Math.sqrt(CH / 1080))
 
     const buildCanvas = new fabric.StaticCanvas(null, { width: CW, height: CH })
     const newSlides = []
 
     for (let i = 0; i < items.length; i++) {
+      const item = items[i]
       buildCanvas.clear()
+      const accent = item.accent || SLIDE_THEME.gold
 
-      // Gradient background
-      const gradientColors = items[i].gradientColors
-        || GRADIENTS[i % GRADIENTS.length].colors
+      // ── Ground: void with a soft indigo bloom falling from the top ──
       buildCanvas.backgroundColor = new fabric.Gradient({
         type: 'linear',
         coords: { x1: 0, y1: 0, x2: 0, y2: CH },
         colorStops: [
-          { offset: 0, color: gradientColors[0] },
-          { offset: 1, color: gradientColors[1] }
-        ]
+          { offset: 0, color: SLIDE_THEME.bloom },
+          { offset: 0.55, color: SLIDE_THEME.void },
+          { offset: 1, color: SLIDE_THEME.void },
+        ],
       })
 
-      // Compute a scaled title font size based on text length so long titles don't consume the canvas
-      const titleLen = items[i].title.length
-      let scaledTitleSize = titleFontSize
-      if (titleLen > 30) {
-        scaledTitleSize = Math.max(36, titleFontSize - (titleLen - 30) * 1.5)
-      } else if (titleLen > 15) {
-        scaledTitleSize = Math.max(48, titleFontSize - (titleLen - 15) * 1)
+      // ── Signature glyph, barely there ──
+      if (item.glyph) {
+        buildCanvas.add(new fabric.FabricText(item.glyph, {
+          fontFamily: SLIDE_THEME.titleFont,
+          fontSize: Math.round(CW * 0.95),
+          fill: accent,
+          opacity: item.accent ? 0.05 : 0.035,
+          originX: 'center',
+          originY: 'center',
+          left: CW / 2,
+          top: CH / 2,
+        }))
       }
 
-      // --- TITLE ---
-      const titleText = new fabric.Textbox(
-        items[i].title,
-        {
-          originX: 'left',
-          originY: 'top',
-          left: PAD,
-          top: TITLE_TOP,
-          width: safeW,
-          fontFamily: opts.titleFont || 'Inter',
-          fill: opts.titleColor || '#FCD34D',
+      let cursorY = isStory ? Math.round(CH * 0.09) : PAD
+
+      // ── Eyebrow ──
+      if (item.eyebrow) {
+        const eyebrow = new fabric.Textbox(item.eyebrow.toUpperCase(), {
+          originX: 'left', originY: 'top',
+          left: PAD, top: cursorY, width: safeW,
+          fontFamily: SLIDE_THEME.bodyFont,
+          fontWeight: 600,
+          fontSize: Math.round(24 * S),
+          charSpacing: 320,
+          fill: accent,
           textAlign: 'center',
-          fontWeight: opts.titleWeight || 'bold',
-          fontSize: scaledTitleSize,
-          charSpacing: 0,
-        }
-      )
-      buildCanvas.add(titleText)
-      buildCanvas.renderAll()
-
-      // Compute body zone dynamically
-      const BODY_ZONE_TOP = TITLE_TOP + titleText.height + BODY_GAP
-      const maxBodyH = CH - BODY_ZONE_TOP - PAD
-
-      // --- BODY TEXT with iterative fit ---
-      let bodyFontSize = bodyFontStart
-      const minBodyFontSize = 16
-
-      const bodyBaseOptions = {
-        originX: 'left',
-        originY: 'top',
-        left: PAD,
-        width: safeW,
-        fontFamily: opts.bodyFont || 'Playfair Display',
-        fill: '#FDFCF0',
-        textAlign: 'center',
-        lineHeight: 1.3,
-        shadow: new fabric.Shadow({
-          color: 'rgba(255, 255, 255, 0.4)',
-          blur: 20, offsetX: 0, offsetY: 0
         })
+        buildCanvas.add(eyebrow)
+        buildCanvas.renderAll()
+        cursorY += eyebrow.height + Math.round(CH * 0.032)
       }
 
+      // ── Title (Fraunces, warm ivory) ──
+      if (item.title && item.title.trim()) {
+        const baseSize = opts.titleFontSize
+          ? Math.round(opts.titleFontSize * S * 1.15)
+          : Math.round(66 * S)
+        const len = item.title.length
+        let size = baseSize
+        if (len > 34) size = Math.max(Math.round(40 * S), baseSize - (len - 34) * 1.4)
+        else if (len > 18) size = Math.max(Math.round(50 * S), baseSize - (len - 18) * 1)
+
+        const title = new fabric.Textbox(item.title, {
+          originX: 'left', originY: 'top',
+          left: PAD, top: cursorY, width: safeW,
+          fontFamily: SLIDE_THEME.titleFont,
+          fontWeight: 600,
+          fontSize: size,
+          fill: SLIDE_THEME.moonlight,
+          textAlign: 'center',
+          lineHeight: 1.12,
+        })
+        buildCanvas.add(title)
+        buildCanvas.renderAll()
+        cursorY += title.height + Math.round(CH * 0.038)
+      }
+
+      // ── Accent rule ──
+      const rule = new fabric.Rect({
+        originX: 'center', originY: 'top',
+        left: CW / 2, top: cursorY,
+        width: Math.round(70 * S),
+        height: Math.max(2, Math.round(2 * S)),
+        fill: accent,
+        opacity: 0.85,
+      })
+      buildCanvas.add(rule)
+      cursorY += rule.height
+
+      // ── Footer: handle left, slide dots right ──
+      const footerY = CH - Math.round(CH * (isStory ? 0.055 : 0.07))
+      buildCanvas.add(new fabric.FabricText(SLIDE_THEME.handle.toUpperCase(), {
+        originX: 'left', originY: 'center',
+        left: PAD, top: footerY,
+        fontFamily: SLIDE_THEME.bodyFont,
+        fontWeight: 500,
+        fontSize: Math.round(21 * S),
+        charSpacing: 220,
+        fill: SLIDE_THEME.footerInk,
+      }))
+
+      if (!isStory && items.length > 1) {
+        const r = Math.max(4, Math.round(6 * S))
+        const gap = Math.round(16 * S)
+        const totalW = items.length * r * 2 + (items.length - 1) * gap
+        let dx = CW - PAD - totalW
+        for (let d = 0; d < items.length; d++) {
+          buildCanvas.add(new fabric.Circle({
+            originX: 'left', originY: 'center',
+            left: dx, top: footerY,
+            radius: r,
+            fill: d === i ? accent : SLIDE_THEME.dotOff,
+          }))
+          dx += r * 2 + gap
+        }
+      }
+
+      // ── Body: Inter, no glow, iterative fit, centered in remaining zone ──
+      const bodyZoneTop = cursorY + Math.round(CH * 0.02)
+      const bodyZoneBottom = footerY - Math.round(CH * 0.05)
+      const maxBodyH = bodyZoneBottom - bodyZoneTop
+      const bodyW = Math.round(safeW * 0.92)
+
+      const bodyBase = {
+        originX: 'left', originY: 'top',
+        left: (CW - bodyW) / 2,
+        width: bodyW,
+        fontFamily: SLIDE_THEME.bodyFont,
+        fontWeight: 400,
+        fill: SLIDE_THEME.mist,
+        textAlign: 'center',
+        lineHeight: 1.55,
+      }
+
+      let bodySize = opts.bodyFontStart || Math.round((isStory ? 40 : 34) * S)
+      const minBody = Math.round(20 * S)
       let bodyText = null
-      while (bodyFontSize >= minBodyFontSize) {
+      while (bodySize >= minBody) {
         if (bodyText) buildCanvas.remove(bodyText)
-        bodyText = new fabric.Textbox(items[i].body, { ...bodyBaseOptions, fontSize: bodyFontSize })
+        bodyText = new fabric.Textbox(item.body || '', { ...bodyBase, fontSize: bodySize })
         buildCanvas.add(bodyText)
         buildCanvas.renderAll()
         if (bodyText.height <= maxBodyH) break
-        bodyFontSize -= 2
+        bodySize -= 2
       }
-
-      // Vertically center body in the body zone
-      const bodyCenterTop = BODY_ZONE_TOP + (maxBodyH - bodyText.height) / 2
-      bodyText.set({ top: Math.max(BODY_ZONE_TOP, bodyCenterTop) })
+      bodyText.set({ top: Math.max(bodyZoneTop, bodyZoneTop + (maxBodyH - bodyText.height) / 2) })
 
       buildCanvas.renderAll()
       newSlides.push(buildCanvas.toJSON(['id']))
@@ -242,13 +325,16 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     setIsLoading(true)
     try {
+      const dateLabel = _dateLabel(payload)
       const items = posts.map(p => {
         let bodyText = p.post || p.content || ''
         if (p.call_to_action) bodyText += `\n\n👇 ${p.call_to_action}`
         bodyText += `\n\n👇 Read the caption for today's cosmic manifestation timing`
-        
+
         return {
-          title: p.theme.replace(/_/g, ' ').toUpperCase(),
+          eyebrow: `Daily Manifestation · ${dateLabel}`,
+          title: _cleanTitle(p.theme.replace(/_/g, ' ')),
+          glyph: '✦',
           body: bodyText,
         }
       })
@@ -277,10 +363,10 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
   // ELEMENT POSTS  (4-slide carousel: fire / earth / air / water)
   // ---------------------------------------------------------------------------
   const ELEMENTS = [
-    { key: 'fire_signs',  emoji: '🔥', label: 'FIRE SIGNS',  gradient: ['#dc2626', '#f97316'] },
-    { key: 'earth_signs', emoji: '🌍', label: 'EARTH SIGNS', gradient: ['#15803d', '#a16207'] },
-    { key: 'air_signs',   emoji: '💨', label: 'AIR SIGNS',   gradient: ['#0ea5e9', '#a855f7'] },
-    { key: 'water_signs', emoji: '💧', label: 'WATER SIGNS', gradient: ['#1d4ed8', '#06b6d4'] },
+    { key: 'fire_signs',  emoji: '🔥', label: 'Fire Signs',  accent: ELEMENT_ACCENTS.fire },
+    { key: 'earth_signs', emoji: '🌍', label: 'Earth Signs', accent: ELEMENT_ACCENTS.earth },
+    { key: 'air_signs',   emoji: '💨', label: 'Air Signs',   accent: ELEMENT_ACCENTS.air },
+    { key: 'water_signs', emoji: '💧', label: 'Water Signs', accent: ELEMENT_ACCENTS.water },
   ]
 
   const handleGenerateElementPosts = async () => {
@@ -295,15 +381,20 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
           // The message starts with the title in caps, then \n\n, then body
           const raw = ec[el.key].message
           const lines = raw.split('\n\n')
-          const title = `${el.emoji} ${lines[0] || el.label}`
           let body = lines.slice(1).join('\n\n')
-          
+
           if (ec[el.key].call_to_action) {
             body += `\n\n👇 ${ec[el.key].call_to_action}`
           }
           body += `\n\n👇 Read the caption for your element's daily spiritual practice`
-          
-          return { title, body, gradientColors: el.gradient }
+
+          return {
+            eyebrow: el.label,
+            title: _cleanTitle(lines[0] || el.label),
+            glyph: '✦',
+            accent: el.accent,
+            body,
+          }
         })
 
       if (items.length === 0) return
@@ -352,10 +443,12 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     setIsLoading(true)
     try {
-      const signSlides = signsForPart.map((sign, idx) => ({
-        title: `${sign.symbol} ${sign.name.toUpperCase()}`,
+      const signSlides = signsForPart.map((sign) => ({
+        eyebrow: `${sign.name} · ${sign.element}`,
+        title: sign.name,
+        glyph: sign.symbol,
+        accent: ELEMENT_ACCENTS[sign.element],
         body: horoscopes[sign.key],
-        gradientColors: GRADIENTS[(part === 1 ? idx : idx + mid) % GRADIENTS.length].colors,
       }))
 
       const items = [...signSlides]
@@ -397,26 +490,18 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
       const STORY_H = 1920
       setCanvasDimensions({ width: STORY_W, height: STORY_H })
 
-      const defaultGrad = ['#1a0533', '#4a1a7a']
-
-      const items = storySlides.map((slide, idx) => {
-        const bgKey = slide.background || ''
-        const gradientColors = STORY_BACKGROUNDS[bgKey] || GRADIENTS[idx % GRADIENTS.length].colors || defaultGrad
-
-        return {
-          title: '',  // stories don't need a title — all text goes in body
-          body: slide.text || '',
-          gradientColors,
-        }
-      })
+      const dateLabel = _dateLabel(payload)
+      const items = storySlides.map((slide) => ({
+        eyebrow: `Sacred Cosmos · ${dateLabel}`,
+        title: '',
+        glyph: '✦',
+        body: slide.text || '',
+      }))
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
         width: STORY_W,
         height: STORY_H,
-        titleFontSize: 1,          // effectively skip title (empty string)
-        bodyFontStart: 42,         // larger default for story format
-        bodyFont: 'Inter',
-        titleFont: 'Inter',
+        bodyFontStart: 42,
       })
       await _loadIntoEditor(newSlides, CW, CH)
     } catch (e) {
@@ -446,7 +531,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     try {
       const items = []
 
-      signsForPart.forEach((sign, idx) => {
+      signsForPart.forEach((sign) => {
         const data = wc[sign.key]
         
         // Slide 1: Energy, Heart, Purpose
@@ -463,18 +548,20 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
           `🌱 Gentle Challenge\n${data.gentle_challenge}`
         ].join('\n\n')
 
-        const gradient = GRADIENTS[(part === 1 ? idx : idx + mid) % GRADIENTS.length].colors
-
         items.push({
-          title: `${sign.symbol} ${sign.name.toUpperCase()}`,
+          eyebrow: `Weekly Forecast · ${sign.element}`,
+          title: sign.name,
+          glyph: sign.symbol,
+          accent: ELEMENT_ACCENTS[sign.element],
           body: part1Body,
-          gradientColors: gradient,
         })
 
         items.push({
-          title: `${sign.symbol} ${sign.name.toUpperCase()} (PART 2)`,
+          eyebrow: 'Weekly Forecast · Part Two',
+          title: sign.name,
+          glyph: sign.symbol,
+          accent: ELEMENT_ACCENTS[sign.element],
           body: part2Body,
-          gradientColors: gradient,
         })
       })
 
@@ -507,9 +594,10 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     setIsLoading(true)
     try {
       const items = [{
-        title: "🧘 TODAY'S SPIRITUAL PRACTICE",
+        eyebrow: `Spiritual Practice · ${_dateLabel(payload)}`,
+        title: "Today's Practice",
+        glyph: '✦',
         body: practice,
-        gradientColors: ['#134e4a', '#4a1a7a'],
       }]
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
@@ -543,33 +631,19 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     try {
       const items = []
       
+      const dateLabel = _dateLabel(payload)
+      const eyebrow = `Daily Overview · ${dateLabel}`
       if (horoscopes.cosmic_overview) {
-        items.push({
-          title: "TODAY'S COSMIC ENERGY",
-          body: horoscopes.cosmic_overview,
-          gradientColors: GRADIENTS[3].colors, // Dark/Mystic
-        })
+        items.push({ eyebrow, title: "Today's Cosmic Energy", glyph: '✦', body: horoscopes.cosmic_overview })
       }
       if (horoscopes.collective_guidance) {
-        items.push({
-          title: "COLLECTIVE GUIDANCE",
-          body: horoscopes.collective_guidance,
-          gradientColors: GRADIENTS[7].colors,
-        })
+        items.push({ eyebrow, title: 'Collective Guidance', glyph: '✦', body: horoscopes.collective_guidance })
       }
       if (horoscopes.timing_wisdom) {
-        items.push({
-          title: "TIMING WISDOM",
-          body: horoscopes.timing_wisdom,
-          gradientColors: GRADIENTS[10].colors,
-        })
+        items.push({ eyebrow, title: 'Timing Wisdom', glyph: '✦', body: horoscopes.timing_wisdom })
       }
       if (horoscopes.manifestation_focus) {
-        items.push({
-          title: "✨ MANIFESTATION FOCUS",
-          body: horoscopes.manifestation_focus,
-          gradientColors: ['#78350f', '#f59e0b'], // Warm Amber
-        })
+        items.push({ eyebrow, title: 'Manifestation Focus', glyph: '✦', body: horoscopes.manifestation_focus })
       }
 
       if (items.length === 0) {
@@ -612,44 +686,25 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
       const items = []
       
+      const eyebrow = 'Weekly Overview'
       if (wc.weekly_theme) {
-        items.push({
-          title: "THIS WEEK'S THEME",
-          body: wc.weekly_theme,
-          gradientColors: ['#a855f7', '#ec4899'] // purpleToPink fallback
-        })
+        items.push({ eyebrow, title: "This Week's Theme", glyph: '✦', body: wc.weekly_theme })
       }
 
       if (wc.collective_message) {
-        items.push({
-          title: "COLLECTIVE MESSAGE",
-          body: wc.collective_message,
-          gradientColors: ['#3b82f6', '#4f46e5'] // indigoBlue fallback
-        })
+        items.push({ eyebrow, title: 'Collective Message', glyph: '✦', body: wc.collective_message })
       }
 
       if (wc.cosmic_timing) {
-        items.push({
-          title: "COSMIC TIMING",
-          body: wc.cosmic_timing,
-          gradientColors: ['#1e40af', '#6b21a8'] // deepBlueToPurple fallback
-        })
+        items.push({ eyebrow, title: 'Cosmic Timing', glyph: '✦', body: wc.cosmic_timing })
       }
 
       if (wc.spiritual_practice) {
-        items.push({
-          title: "SPIRITUAL PRACTICE",
-          body: wc.spiritual_practice,
-          gradientColors: ['#0f766e', '#7e22ce'] // tealToPurple fallback
-        })
+        items.push({ eyebrow, title: 'Spiritual Practice', glyph: '✦', body: wc.spiritual_practice })
       }
 
       if (wc.manifestation_focus) {
-        items.push({
-          title: "MANIFESTATION FOCUS",
-          body: wc.manifestation_focus,
-          gradientColors: ['#b45309', '#ea580c'] // warmAmber fallback
-        })
+        items.push({ eyebrow, title: 'Manifestation Focus', glyph: '✦', body: wc.manifestation_focus })
       }
 
       if (items.length === 0) {
@@ -692,9 +747,10 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     try {
       const items = [
         {
-          title: "✨ WEEKLY CHALLENGE",
+          eyebrow: 'Sacred Cosmos',
+          title: 'Weekly Challenge',
+          glyph: '✦',
           body: weeklyChallenge,
-          gradientColors: ['#4c1d95', '#7e22ce'] // mysticPurple fallback
         }
       ]
 

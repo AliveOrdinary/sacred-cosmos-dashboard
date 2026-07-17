@@ -33,7 +33,30 @@ export const BACKGROUND_COLORS = [
 ]
 
 // Basic fonts to select from
-export const FONTS = ['sans-serif', 'serif', 'monospace', 'Inter', 'Playfair Display']
+export const FONTS = ['sans-serif', 'serif', 'monospace', 'Inter', 'Playfair Display', 'Fraunces']
+
+// ── Cosmic editorial slide system ─────────────────────────────────────────
+// Design tokens for auto-generated slides. Change `handle` to your real IG handle.
+export const SLIDE_THEME = {
+  void: '#0B0914',       // base ground
+  bloom: '#1A1735',      // indigo bloom at the top of the gradient
+  moonlight: '#F1EEE4',  // titles — warm ivory, not pure white
+  mist: '#B9B4C7',       // body text — lavender-gray
+  gold: '#E4C57E',       // default accent: eyebrow, rule, active dot
+  footerInk: '#565070',  // footer handle
+  dotOff: '#3A3552',     // inactive slide dots
+  handle: '@sacredcosmos',
+  titleFont: 'Fraunces',
+  bodyFont: 'Inter',
+}
+
+// Per-element accent tints for sign/element slides (replaces gold)
+export const ELEMENT_ACCENTS = {
+  fire: '#E8A87C',
+  earth: '#A8C0A0',
+  air: '#A9C1D9',
+  water: '#8FB3C7',
+}
 
 // Common brand colors to select from (can be customized)
 export const COLORS = ['#FDFCF0', '#0B0914', '#F2D388', '#8B5CF6', '#10B981', '#EF4444', '#3B82F6']
@@ -72,18 +95,18 @@ export const GRADIENTS = [
 
 // 12 zodiac signs used by the sign carousel generator
 export const ZODIAC_SIGNS = [
-  { name: 'Aries',       symbol: '♈', key: 'aries' },
-  { name: 'Taurus',      symbol: '♉', key: 'taurus' },
-  { name: 'Gemini',      symbol: '♊', key: 'gemini' },
-  { name: 'Cancer',      symbol: '♋', key: 'cancer' },
-  { name: 'Leo',         symbol: '♌', key: 'leo' },
-  { name: 'Virgo',       symbol: '♍', key: 'virgo' },
-  { name: 'Libra',       symbol: '♎', key: 'libra' },
-  { name: 'Scorpio',     symbol: '♏', key: 'scorpio' },
-  { name: 'Sagittarius', symbol: '♐', key: 'sagittarius' },
-  { name: 'Capricorn',   symbol: '♑', key: 'capricorn' },
-  { name: 'Aquarius',    symbol: '♒', key: 'aquarius' },
-  { name: 'Pisces',      symbol: '♓', key: 'pisces' },
+  { name: 'Aries',       symbol: '♈', key: 'aries',       element: 'fire' },
+  { name: 'Taurus',      symbol: '♉', key: 'taurus',      element: 'earth' },
+  { name: 'Gemini',      symbol: '♊', key: 'gemini',      element: 'air' },
+  { name: 'Cancer',      symbol: '♋', key: 'cancer',      element: 'water' },
+  { name: 'Leo',         symbol: '♌', key: 'leo',         element: 'fire' },
+  { name: 'Virgo',       symbol: '♍', key: 'virgo',       element: 'earth' },
+  { name: 'Libra',       symbol: '♎', key: 'libra',       element: 'air' },
+  { name: 'Scorpio',     symbol: '♏', key: 'scorpio',     element: 'water' },
+  { name: 'Sagittarius', symbol: '♐', key: 'sagittarius', element: 'fire' },
+  { name: 'Capricorn',   symbol: '♑', key: 'capricorn',   element: 'earth' },
+  { name: 'Aquarius',    symbol: '♒', key: 'aquarius',    element: 'air' },
+  { name: 'Pisces',      symbol: '♓', key: 'pisces',      element: 'water' },
 ]
 
 // Maps the background hint strings from n8n IG story data → gradient color pairs
