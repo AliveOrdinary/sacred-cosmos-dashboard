@@ -121,6 +121,15 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     return (valid ? d : new Date()).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
   }
 
+  // Nakshatra-branded eyebrow: "ROHINI · THE GROWTH STAR · JULY 17".
+  // Falls back to the plain label for payloads generated before v7.
+  const _brandEyebrow = (payload, fallback) => {
+    const name = payload?.nakshatra_name
+    const trans = payload?.nakshatra_translation
+    const date = _dateLabel(payload)
+    return name && trans ? `${name} · ${trans} · ${date}` : `${fallback} · ${date}`
+  }
+
   const _buildSlides = async (items, opts = {}) => {
     const CW = opts.width || canvasDimensions.width
     const CH = opts.height || canvasDimensions.height
@@ -177,13 +186,14 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
       // ── Eyebrow ──
       if (item.eyebrow) {
+        const longEyebrow = item.eyebrow.length > 38
         const eyebrow = new fabric.Textbox(item.eyebrow.toUpperCase(), {
           originX: 'left', originY: 'top',
           left: PAD, top: cursorY, width: safeW,
           fontFamily: SLIDE_THEME.bodyFont,
           fontWeight: 600,
-          fontSize: Math.round(24 * S),
-          charSpacing: 320,
+          fontSize: Math.round((longEyebrow ? 21 : 24) * S),
+          charSpacing: longEyebrow ? 180 : 320,
           fill: accent,
           textAlign: 'center',
         })
@@ -325,14 +335,13 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     setIsLoading(true)
     try {
-      const dateLabel = _dateLabel(payload)
       const items = posts.map(p => {
         let bodyText = p.post || p.content || ''
         if (p.call_to_action) bodyText += `\n\n👇 ${p.call_to_action}`
         bodyText += `\n\n👇 Read the caption for today's cosmic manifestation timing`
 
         return {
-          eyebrow: `Daily Manifestation · ${dateLabel}`,
+          eyebrow: _brandEyebrow(payload, 'Daily Manifestation'),
           title: _cleanTitle(p.theme.replace(/_/g, ' ')),
           glyph: '✦',
           body: bodyText,
@@ -490,9 +499,8 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
       const STORY_H = 1920
       setCanvasDimensions({ width: STORY_W, height: STORY_H })
 
-      const dateLabel = _dateLabel(payload)
       const items = storySlides.map((slide) => ({
-        eyebrow: `Sacred Cosmos · ${dateLabel}`,
+        eyebrow: _brandEyebrow(payload, 'Sacred Cosmos'),
         title: '',
         glyph: '✦',
         body: slide.text || '',
@@ -594,7 +602,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     setIsLoading(true)
     try {
       const items = [{
-        eyebrow: `Spiritual Practice · ${_dateLabel(payload)}`,
+        eyebrow: _brandEyebrow(payload, 'Spiritual Practice'),
         title: "Today's Practice",
         glyph: '✦',
         body: practice,
@@ -631,8 +639,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     try {
       const items = []
       
-      const dateLabel = _dateLabel(payload)
-      const eyebrow = `Daily Overview · ${dateLabel}`
+      const eyebrow = _brandEyebrow(payload, 'Daily Overview')
       if (horoscopes.cosmic_overview) {
         items.push({ eyebrow, title: "Today's Cosmic Energy", glyph: '✦', body: horoscopes.cosmic_overview })
       }
