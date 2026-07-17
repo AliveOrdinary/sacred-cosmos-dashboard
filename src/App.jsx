@@ -1,9 +1,6 @@
 import { useRef, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ImageDown, RefreshCw, LogOut, Loader2, Sparkles, Wand2, Type, Image as ImageIcon } from 'lucide-react'
-import JSZip from "jszip"
-import { saveAs } from "file-saver"
-import * as fabric from "fabric"
+import { RefreshCw, LogOut, Loader2, Sparkles, Wand2, Send } from 'lucide-react'
 
 import { useFabricCanvas } from "@/hooks/useFabricCanvas.jsx"
 import { useSlides } from "@/hooks/useSlides"
@@ -16,8 +13,6 @@ import { SlideTray } from "@/components/editor/SlideTray"
 import { EditorToolsCard } from "@/components/editor/EditorToolsCard"
 import { DataFeedCard } from "@/components/editor/DataFeedCard"
 import { PostCaptionCard } from "@/components/editor/PostCaptionCard"
-import { AiImageCard } from "@/components/editor/AiImageCard"
-import { useAiImage } from "@/hooks/useAiImage"
 import { LoginPage } from "@/components/LoginPage"
 import { MobileToolsPanel } from "@/components/editor/MobileToolsPanel"
 
@@ -50,40 +45,18 @@ function Dashboard({ user, signOut }) {
   // n8n data + carousel generation
   const data = useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDimensions, setCanvasDimensions })
 
-  // AI image generation (Nano Banana)
-  const aiImage = useAiImage()
-
   // Publish to social (Supabase Storage → n8n webhook)
   const publishHook = usePublish()
 
-  // --- EXPORT ---
-  const downloadAllSlides = async () => {
-    if (!editor) return
-    try {
-      const zip = new JSZip()
-      const exportCanvas = new fabric.StaticCanvas(null, { width: 1080, height: 1080, backgroundColor: '#0B0914' })
-
-      // Grab the very latest state of the active slide
-      const currentSlides = [...slides]
-      currentSlides[currentIndexRef.current] = editor.toJSON(['id'])
-
-      for (let i = 0; i < currentSlides.length; i++) {
-        await exportCanvas.loadFromJSON(currentSlides[i])
-        exportCanvas.renderAll()
-        const dataURL = exportCanvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 })
-        zip.file(`slide-${i + 1}.png`, dataURL.replace(/^data:image\/(png|jpg);base64,/, ""), { base64: true })
-      }
-
-      exportCanvas.dispose()
-      saveAs(await zip.generateAsync({ type: "blob" }), "cosmic-carousel.zip")
-    } catch (error) {
-      console.error("Export failed:", error)
-      alert("Failed to export slides!")
+  // Publish shortcut: header button jumps to the publish surface
+  const hasContent = slides.some(sl => (sl.objects?.length ?? 0) > 0)
+  const goToPublish = () => {
+    if (isMobile) {
+      setMobileTab('publish')
+    } else {
+      document.getElementById('publish-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
-
-
-
 
   return (
     // Mobile root: full viewport height (100dvh). Desktop: min-h-screen
@@ -96,14 +69,15 @@ function Dashboard({ user, signOut }) {
           <p className="hidden md:block text-slate-400">Design dynamic posts fueled by your n8n automation</p>
         </div>
         <div className="flex gap-2 lg:gap-4 items-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={downloadAllSlides}
-            className="border-purple-600 text-purple-300 hover:bg-purple-900/40"
-          >
-            <ImageDown size={16} className="lg:mr-2" /> <span className="hidden lg:inline">Download All (Zip)</span>
-          </Button>
+          {hasContent && (
+            <Button
+              size="sm"
+              onClick={goToPublish}
+              className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20"
+            >
+              <Send size={15} className="lg:mr-2" /> <span className="hidden lg:inline">Publish</span>
+            </Button>
+          )}
 
           <div className="flex items-center gap-2 ml-1 lg:ml-2 border-l border-slate-800 pl-2 lg:pl-4">
             <span className="text-xs text-slate-600 hidden sm:inline">{user?.email}</span>
@@ -144,6 +118,7 @@ function Dashboard({ user, signOut }) {
             duplicateSlide={(idx, e) => slideManager.duplicateSlide(editor, idx, e)}
             deleteSlide={(idx, e) => slideManager.deleteSlide(editor, idx, e)}
           />
+          <div id="publish-card">
           <PostCaptionCard
             postCaption={data.postCaption}
             setPostCaption={data.setPostCaption}
@@ -159,8 +134,11 @@ function Dashboard({ user, signOut }) {
             publishMessage={publishHook.publishMessage}
             selectedPlatforms={publishHook.selectedPlatforms}
             togglePlatform={publishHook.togglePlatform}
+            postType={publishHook.postType}
+            setPostType={publishHook.setPostType}
             resetPublishStatus={publishHook.resetPublishStatus}
           />
+          </div>
         </div>
 
         {/* LEFT: Tool cards */}
@@ -201,15 +179,6 @@ function Dashboard({ user, signOut }) {
             handleGenerateDailyOverview={data.handleGenerateDailyOverview}
           />
 
-          <AiImageCard
-            cosmicData={data.cosmicData}
-            aiImage={aiImage}
-            addImageToCanvas={null}
-            fillBackgroundWithImage={canvas.fillBackgroundWithImage}
-            editor={editor}
-            slides={slides}
-            setSlides={setSlides}
-          />
         </div>
       </div>
 
@@ -292,11 +261,11 @@ function Dashboard({ user, signOut }) {
             publishMessage={publishHook.publishMessage}
             selectedPlatforms={publishHook.selectedPlatforms}
             togglePlatform={publishHook.togglePlatform}
+            postType={publishHook.postType}
+            setPostType={publishHook.setPostType}
             resetPublishStatus={publishHook.resetPublishStatus}
-            // AI panel props
-            aiImage={aiImage}
+            isLoading={data.isLoading}
             slides={slides}
-            setSlides={setSlides}
           />
         </div>
 
@@ -306,8 +275,7 @@ function Dashboard({ user, signOut }) {
             {[
               { id: 'generate', icon: Sparkles, label: 'Generate', activeColor: 'text-amber-400' },
               { id: 'edit', icon: Wand2, label: 'Tools', activeColor: 'text-indigo-400' },
-              { id: 'caption', icon: Type, label: 'Caption', activeColor: 'text-pink-400' },
-              { id: 'ai', icon: ImageIcon, label: 'AI', activeColor: 'text-emerald-400' },
+              { id: 'publish', icon: Send, label: 'Publish', activeColor: 'text-violet-400' },
             ].map(tab => (
               <button
                 key={tab.id}

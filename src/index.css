@@ -134,3 +134,22 @@
     @apply bg-background text-foreground;
     }
 }
+/* Touch-friendly slider thumbs for the mobile tools panel */
+.touch-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #a78bfa;
+  border: 2px solid #1e1b4b;
+  cursor: pointer;
+}
+.touch-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #a78bfa;
+  border: 2px solid #1e1b4b;
+  cursor: pointer;
+}

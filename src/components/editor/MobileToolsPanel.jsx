@@ -1,23 +1,34 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import {
-  Type, Image as ImageIcon, Square, Circle, Triangle,
-  ChevronUp, ChevronDown, Copy, Trash2, Maximize,
-  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
-  Sparkles, Smartphone, RectangleHorizontal,
-  Wand2, ImagePlus, Layers, Loader2, X, AlertCircle,
+  Type, ChevronUp, ChevronDown, Copy, Trash2,
+  Sparkles, Loader2, AlertCircle,
   Check, Flame, Stars, Film, CalendarDays, Calendar,
-  BookOpen, Flower2, MessageSquare, Target,
-  Send, Instagram, Facebook
+  BookOpen, Flower2, Target, Minus, Plus,
+  Send, Instagram, Facebook, LayoutGrid, CircleDashed
 } from 'lucide-react'
 
 const PLATFORMS = [
   { id: 'instagram', label: 'Instagram', icon: Instagram, activeClass: 'bg-pink-500/20 text-pink-300 border-pink-500/50' },
   { id: 'facebook',  label: 'Facebook',  icon: Facebook,  activeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/50' },
 ]
-import { ICON_LIBRARY, FONTS, COLORS, GRADIENTS, BACKGROUND_COLORS } from '@/lib/constants'
-import { ZODIAC_SIGNS } from '@/lib/constants'
-import * as fabric from 'fabric'
+
+const POST_TYPES = [
+  { id: 'feed',  label: 'Feed',  icon: LayoutGrid },
+  { id: 'story', label: 'Story', icon: CircleDashed },
+]
+import { ZODIAC_SIGNS, SLIDE_THEME, ELEMENT_ACCENTS } from '@/lib/constants'
+
+// Colors offered on mobile — brand palette only, so corrections stay on-theme
+const BRAND_SWATCHES = [
+  SLIDE_THEME.moonlight,
+  SLIDE_THEME.mist,
+  SLIDE_THEME.gold,
+  ELEMENT_ACCENTS.fire,
+  ELEMENT_ACCENTS.earth,
+  ELEMENT_ACCENTS.air,
+  ELEMENT_ACCENTS.water,
+]
 
 // ─── SECTION LABEL ───
 function Label({ children }) {
@@ -40,7 +51,7 @@ function HScroll({ children, className = '' }) {
 // ═══════════════════════════════════════════════════════
 //  GENERATE PANEL
 // ═══════════════════════════════════════════════════════
-function GeneratePanel({ cosmicData, addText, handlers }) {
+function GeneratePanel({ cosmicData, isLoading, handlers }) {
   if (!cosmicData || cosmicData.length === 0) {
     return (
       <div className="flex items-center justify-center py-12 text-slate-500 text-sm">
@@ -103,246 +114,136 @@ function GeneratePanel({ cosmicData, addText, handlers }) {
           <button
             key={btn.label}
             onClick={btn.onClick}
-            className={`flex items-center gap-2 px-3 py-3 rounded-xl bg-gradient-to-r ${btn.gradient} text-white text-xs font-medium active:scale-95 transition-transform shadow-lg`}
+            disabled={isLoading}
+            className={`flex items-center gap-2 px-3 py-3.5 rounded-xl bg-gradient-to-r ${btn.gradient} text-white text-xs font-medium active:scale-95 transition-transform shadow-lg disabled:opacity-40 disabled:pointer-events-none`}
           >
-            <btn.icon size={16} className="shrink-0" />
+            {isLoading
+              ? <Loader2 size={16} className="shrink-0 animate-spin" />
+              : <btn.icon size={16} className="shrink-0" />}
             <span className="truncate">{btn.label}</span>
           </button>
         ))}
       </div>
+
+      {isLoading && (
+        <p className="text-center text-[11px] text-slate-500 animate-pulse">Building slides…</p>
+      )}
     </div>
   )
 }
 
 
 // ═══════════════════════════════════════════════════════
-//  TOOLS PANEL
+//  TOOLS PANEL — correction-only. Slides arrive on-brand from the
+//  generator; mobile just fixes wording, size, color, and layering.
+//  The full design toolkit lives on desktop.
 // ═══════════════════════════════════════════════════════
 function ToolsPanel({
-  canvasDimensions, setCanvasDimensions,
-  addText, addRect, addCircle, addTriangle, addIcon,
-  bringForward, sendBackward, duplicateSelected, deleteSelected,
-  fillBackgroundWithImage, updateActiveObjectProp,
-  updateBackgroundColor, updateGradientBackground,
-  activeObject, editor, open, getInputProps,
+  addText, bringForward, sendBackward, duplicateSelected, deleteSelected,
+  updateActiveObjectProp, activeObject,
 }) {
-  return (
-    <div className="flex flex-col gap-3 px-1 py-2">
+  const isText = activeObject && ['textbox', 'text', 'i-text', 'Textbox', 'IText'].includes(activeObject.type)
 
-      {/* Background Colors */}
-      <div className="flex flex-col gap-1.5">
-        <Label>Background</Label>
-        <HScroll>
-          {BACKGROUND_COLORS.map(color => (
-            <button
-              key={color}
-              onClick={() => updateBackgroundColor(color)}
-              className={`shrink-0 w-9 h-9 rounded-full border-2 snap-center active:scale-95 transition-transform ${
-                editor?.backgroundColor === color ? 'border-purple-400 scale-110 ring-2 ring-purple-400/30' : 'border-slate-700'
-              }`}
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </HScroll>
-      </div>
+  const stepFont = (delta) => {
+    const next = Math.max(12, Math.min(220, Math.round((activeObject.fontSize || 40) + delta)))
+    updateActiveObjectProp('fontSize', next)
+  }
 
-      {/* Gradients */}
-      <div className="flex flex-col gap-1.5">
-        <Label>Gradients</Label>
-        <HScroll>
-          {GRADIENTS.map(grad => (
-            <button
-              key={grad.name}
-              onClick={() => updateGradientBackground(grad.colors)}
-              className="shrink-0 w-14 h-9 rounded-lg border border-slate-700 snap-center active:scale-95 transition-transform"
-              style={{ background: `linear-gradient(135deg, ${grad.colors[0]}, ${grad.colors[1]})` }}
-            />
-          ))}
-        </HScroll>
-      </div>
-
-      {/* Quick actions — 2×2 grid */}
-      <div className="flex flex-col gap-1.5">
-        <Label>Add</Label>
-        <div className="grid grid-cols-4 gap-2 px-1">
-          {[
-            { icon: Type, label: 'Text', onClick: () => addText() },
-            { icon: ImageIcon, label: 'Image', onClick: open },
-            { icon: Square, label: 'Rect', onClick: addRect },
-            { icon: Circle, label: 'Circle', onClick: addCircle },
-          ].map(item => (
-            <button
-              key={item.label}
-              onClick={item.onClick}
-              className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-slate-800/80 text-slate-300 active:bg-slate-700 active:scale-95 transition-all"
-            >
-              <item.icon size={18} />
-              <span className="text-[10px]">{item.label}</span>
-            </button>
-          ))}
-          <input {...getInputProps()} className="hidden" />
-        </div>
-      </div>
-
-      {/* Canvas size */}
-      <div className="flex flex-col gap-1.5">
-        <Label>Canvas</Label>
-        <div className="flex gap-2 px-1">
-          {[
-            { label: 'Square', w: 1080, h: 1080, icon: Square },
-            { label: 'Portrait', w: 1080, h: 1350, icon: RectangleHorizontal },
-            { label: 'Story', w: 1080, h: 1920, icon: Smartphone },
-          ].map(({ label, w, h, icon: Icon }) => {
-            const active = canvasDimensions.width === w && canvasDimensions.height === h
-            return (
-              <button
-                key={label}
-                onClick={() => setCanvasDimensions({ width: w, height: h })}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium transition-all active:scale-95 ${
-                  active ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-slate-800/80 text-slate-400'
-                }`}
-              >
-                <Icon size={14} className={label === 'Portrait' ? 'rotate-90' : ''} />
-                {label}
-              </button>
-            )
+  if (!activeObject) {
+    return (
+      <div className="flex flex-col items-center gap-5 px-4 py-10">
+        <p className="text-xs text-slate-500 text-center leading-relaxed">
+          Tap an object on the canvas to select it.
+          <br />
+          Double-tap text to edit the wording.
+        </p>
+        <button
+          onClick={() => addText('New line', {
+            fontFamily: SLIDE_THEME.bodyFont,
+            fill: SLIDE_THEME.mist,
+            fontSize: 34,
+            textAlign: 'center',
           })}
-        </div>
+          className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-sm font-medium active:scale-95 active:bg-slate-700 transition-all"
+        >
+          <Type size={16} /> Add text
+        </button>
       </div>
+    )
+  }
 
-      {/* Icons */}
-      <div className="flex flex-col gap-1.5">
-        <Label>Icons</Label>
-        <HScroll>
-          {ICON_LIBRARY.map(asset => (
+  return (
+    <div className="flex flex-col gap-4 px-3 py-3">
+      <Label>{isText ? 'Text' : 'Selected object'}</Label>
+
+      {/* Font size stepper — no keyboard needed */}
+      {isText && (
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs text-slate-500">Size</span>
+          <div className="flex items-center gap-3">
             <button
-              key={asset.name}
-              onClick={() => addIcon(asset.icon)}
-              className="shrink-0 flex items-center justify-center w-11 h-11 rounded-xl border border-slate-700 bg-slate-800/50 text-slate-400 snap-center active:bg-slate-700 active:scale-95 transition-all"
+              onClick={() => stepFont(-4)}
+              className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center active:scale-95 active:bg-slate-700 transition-all"
             >
-              <asset.icon size={20} />
+              <Minus size={18} />
             </button>
-          ))}
-        </HScroll>
-      </div>
-
-      {/* ─── Object editing (when something is selected) ─── */}
-      {activeObject ? (
-        <div className="flex flex-col gap-3 pt-2 border-t border-slate-800 animate-in fade-in">
-          <Label>{activeObject.type === 'image' ? 'Image' : 'Selected Object'}</Label>
-
-          {/* Text-only tools */}
-          {(['textbox', 'text', 'i-text', 'Textbox', 'IText'].includes(activeObject.type)) && (
-            <>
-              {/* Font family — horizontal scroll */}
-              <HScroll>
-                {FONTS.map(font => (
-                  <button
-                    key={font}
-                    onClick={() => updateActiveObjectProp('fontFamily', font)}
-                    className={`shrink-0 text-xs px-3 py-2 rounded-lg snap-center active:scale-95 transition-all ${
-                      activeObject.fontFamily === font ? 'bg-purple-500/20 text-purple-300 border border-purple-500' : 'bg-slate-800 text-slate-400 border border-slate-700'
-                    }`}
-                    style={{ fontFamily: font }}
-                  >
-                    {font.split('-')[0]}
-                  </button>
-                ))}
-              </HScroll>
-
-              {/* B / I / U + Size */}
-              <div className="flex items-center justify-between px-1 gap-2">
-                <div className="flex rounded-xl overflow-hidden border border-slate-700">
-                  <button onClick={() => updateActiveObjectProp('fontWeight', activeObject.fontWeight === 'bold' ? 'normal' : 'bold')} className={`p-2.5 active:bg-slate-700 ${activeObject.fontWeight === 'bold' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><Bold size={16}/></button>
-                  <button onClick={() => updateActiveObjectProp('fontStyle', activeObject.fontStyle === 'italic' ? 'normal' : 'italic')} className={`p-2.5 border-x border-slate-700 active:bg-slate-700 ${activeObject.fontStyle === 'italic' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><Italic size={16}/></button>
-                  <button onClick={() => updateActiveObjectProp('underline', !activeObject.underline)} className={`p-2.5 active:bg-slate-700 ${activeObject.underline ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><Underline size={16}/></button>
-                </div>
-                <div className="flex rounded-xl overflow-hidden border border-slate-700">
-                  <button onClick={() => updateActiveObjectProp('textAlign', 'left')} className={`p-2.5 active:bg-slate-700 ${activeObject.textAlign === 'left' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><AlignLeft size={16}/></button>
-                  <button onClick={() => updateActiveObjectProp('textAlign', 'center')} className={`p-2.5 border-x border-slate-700 active:bg-slate-700 ${activeObject.textAlign === 'center' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><AlignCenter size={16}/></button>
-                  <button onClick={() => updateActiveObjectProp('textAlign', 'right')} className={`p-2.5 active:bg-slate-700 ${activeObject.textAlign === 'right' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400'}`}><AlignRight size={16}/></button>
-                </div>
-              </div>
-
-              {/* Glow */}
-              <div className="flex items-center gap-2 px-1">
-                <button
-                  onClick={() => updateActiveObjectProp('shadow', activeObject.shadow ? null : new fabric.Shadow({ color: 'rgba(255,255,255,0.5)', blur: 10, offsetX: 0, offsetY: 0 }))}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 ${activeObject.shadow ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}
-                >
-                  <Sparkles size={14} /> Glow
-                </button>
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <span className="text-[10px] text-slate-500">Size</span>
-                  <input
-                    type="number"
-                    className="w-14 h-8 bg-slate-800 border border-slate-700 text-white text-xs text-center rounded-lg"
-                    value={Math.round(activeObject.fontSize || 40)}
-                    onChange={(e) => updateActiveObjectProp('fontSize', parseInt(e.target.value) || 40)}
-                  />
-                </div>
-              </div>
-
-              {/* Sliders: Line Height + Spacing */}
-              <div className="flex flex-col gap-2 px-1">
-                <SliderRow label="Line Ht" min={0.5} max={2.5} step={0.1} value={activeObject.lineHeight ?? 1.16} onChange={(v) => updateActiveObjectProp('lineHeight', v)} display={Number(activeObject.lineHeight ?? 1.16).toFixed(1)} />
-                <SliderRow label="Spacing" min={-100} max={500} step={10} value={activeObject.charSpacing ?? 0} onChange={(v) => updateActiveObjectProp('charSpacing', v)} display={activeObject.charSpacing ?? 0} />
-              </div>
-            </>
-          )}
-
-          {/* Color swatches */}
-          {activeObject.type !== 'image' && (
-            <HScroll>
-              {COLORS.map(color => (
-                <button
-                  key={color}
-                  onClick={() => updateActiveObjectProp('fill', color)}
-                  className={`shrink-0 w-8 h-8 rounded-full border-2 snap-center active:scale-95 transition-transform ${
-                    activeObject.fill === color ? 'border-white scale-110' : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </HScroll>
-          )}
-
-          {/* Image: Set as BG */}
-          {activeObject.type === 'image' && (
+            <span className="w-10 text-center text-sm font-medium text-slate-200">
+              {Math.round(activeObject.fontSize || 40)}
+            </span>
             <button
-              onClick={fillBackgroundWithImage}
-              className="flex items-center justify-center gap-2 py-2.5 mx-1 rounded-xl bg-slate-800 text-slate-300 text-xs active:bg-slate-700 active:scale-95 transition-all border border-slate-700"
+              onClick={() => stepFont(4)}
+              className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center active:scale-95 active:bg-slate-700 transition-all"
             >
-              <Maximize size={14} /> Set as Background
-            </button>
-          )}
-
-          {/* Opacity */}
-          <div className="px-1">
-            <SliderRow label="Opacity" min={0.1} max={1} step={0.05} value={activeObject.opacity ?? 1} onChange={(v) => updateActiveObjectProp('opacity', v)} display={`${Math.round((activeObject.opacity ?? 1) * 100)}%`} />
-          </div>
-
-          {/* Layer controls */}
-          <div className="grid grid-cols-4 gap-2 px-1">
-            <button onClick={bringForward} className="flex flex-col items-center gap-1 py-2 rounded-xl bg-slate-800/80 text-slate-400 active:bg-slate-700 active:scale-95 transition-all">
-              <ChevronUp size={16} /><span className="text-[9px]">Fwd</span>
-            </button>
-            <button onClick={sendBackward} className="flex flex-col items-center gap-1 py-2 rounded-xl bg-slate-800/80 text-slate-400 active:bg-slate-700 active:scale-95 transition-all">
-              <ChevronDown size={16} /><span className="text-[9px]">Back</span>
-            </button>
-            <button onClick={duplicateSelected} className="flex flex-col items-center gap-1 py-2 rounded-xl bg-slate-800/80 text-slate-400 active:bg-slate-700 active:scale-95 transition-all">
-              <Copy size={14} /><span className="text-[9px]">Clone</span>
-            </button>
-            <button onClick={deleteSelected} className="flex flex-col items-center gap-1 py-2 rounded-xl bg-red-500/10 text-red-400 active:bg-red-500 active:text-white active:scale-95 transition-all">
-              <Trash2 size={14} /><span className="text-[9px]">Delete</span>
+              <Plus size={18} />
             </button>
           </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center py-4 text-xs text-slate-600">
-          Tap an object on the canvas to edit
         </div>
       )}
+
+      {/* Brand palette */}
+      {activeObject.type !== 'image' && (
+        <div className="flex flex-col gap-1.5">
+          <Label>Color</Label>
+          <HScroll>
+            {BRAND_SWATCHES.map(color => (
+              <button
+                key={color}
+                onClick={() => updateActiveObjectProp('fill', color)}
+                className={`shrink-0 w-11 h-11 rounded-full border-2 snap-center active:scale-95 transition-transform ${
+                  activeObject.fill === color ? 'border-white scale-105' : 'border-slate-700'
+                }`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </HScroll>
+        </div>
+      )}
+
+      {/* Opacity */}
+      <div className="px-1">
+        <SliderRow
+          label="Opacity" min={0.1} max={1} step={0.05}
+          value={activeObject.opacity ?? 1}
+          onChange={(v) => updateActiveObjectProp('opacity', v)}
+          display={`${Math.round((activeObject.opacity ?? 1) * 100)}%`}
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="grid grid-cols-4 gap-2 px-1">
+        <button onClick={bringForward} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-slate-800/80 text-slate-400 active:bg-slate-700 active:scale-95 transition-all">
+          <ChevronUp size={17} /><span className="text-[9px]">Fwd</span>
+        </button>
+        <button onClick={sendBackward} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-slate-800/80 text-slate-400 active:bg-slate-700 active:scale-95 transition-all">
+          <ChevronDown size={17} /><span className="text-[9px]">Back</span>
+        </button>
+        <button onClick={duplicateSelected} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-slate-800/80 text-slate-400 active:bg-slate-700 active:scale-95 transition-all">
+          <Copy size={15} /><span className="text-[9px]">Clone</span>
+        </button>
+        <button onClick={deleteSelected} className="flex flex-col items-center gap-1 py-3 rounded-xl bg-red-500/10 text-red-400 active:bg-red-500 active:text-white active:scale-95 transition-all">
+          <Trash2 size={15} /><span className="text-[9px]">Delete</span>
+        </button>
+      </div>
     </div>
   )
 }
@@ -354,7 +255,7 @@ function SliderRow({ label, min, max, step, value, onChange, display }) {
       <span className="text-[10px] text-slate-500 w-12 shrink-0">{label}</span>
       <input
         type="range" min={min} max={max} step={step}
-        className="flex-1 accent-purple-500 h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer"
+        className="touch-slider flex-1 accent-purple-500 h-2 bg-slate-700 rounded-full appearance-none cursor-pointer"
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />
@@ -370,6 +271,7 @@ function SliderRow({ label, min, max, step, value, onChange, display }) {
 function CaptionPanel({
   postCaption, setPostCaption, isCopied, handleCopyCaption, cosmicData,
   publish, isPublishing, publishStatus, publishMessage, selectedPlatforms, togglePlatform, resetPublishStatus,
+  postType, setPostType,
   editor, slides, currentIndexRef,
 }) {
   const [activeTab, setActiveTab] = useState('social')
@@ -443,6 +345,30 @@ function CaptionPanel({
 
       {/* ── PUBLISH SECTION ── */}
       <div className="shrink-0 px-3 pb-3 flex flex-col gap-2">
+        {/* Post type: Feed / Story */}
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-full bg-slate-800/60 border border-slate-700 p-0.5">
+            {POST_TYPES.map(({ id, label, icon: Icon }) => {
+              const active = postType === id
+              return (
+                <button
+                  key={id}
+                  onClick={() => setPostType?.(id)}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all active:scale-95 ${
+                    active ? 'bg-violet-500/25 text-violet-300' : 'text-slate-500'
+                  }`}
+                >
+                  <Icon size={13} />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          {postType === 'story' && (
+            <span className="text-[10px] text-slate-500">9:16 · no IG caption</span>
+          )}
+        </div>
+
         {/* Platform toggles */}
         <div className="flex gap-2">
           {PLATFORMS.map(({ id, label, icon: Icon, activeClass }) => {
@@ -492,131 +418,6 @@ function CaptionPanel({
 
 
 // ═══════════════════════════════════════════════════════
-//  AI IMAGE PANEL
-// ═══════════════════════════════════════════════════════
-function AiPanel({ cosmicData, aiImage, fillBackgroundWithImage, editor, slides, setSlides }) {
-  const [prompt, setPrompt] = useState('')
-  const { isGenerating, generatedImageUrl, error, progress, generateImage, clearImage } = aiImage
-
-  const payload = cosmicData?.[0]
-  const cosmicImagePrompt = payload?.daily_content_raw?.individual_horoscopes?.cosmic_image_prompt
-
-  useEffect(() => {
-    if (cosmicImagePrompt) setPrompt(cosmicImagePrompt)
-  }, [cosmicImagePrompt])
-
-  const handleAddToCanvas = () => {
-    if (!generatedImageUrl || !editor) return
-    const imgEl = new Image()
-    imgEl.crossOrigin = 'anonymous'
-    imgEl.onload = () => {
-      const fabricImg = new fabric.FabricImage(imgEl, { originX: 'left', originY: 'top', left: 50, top: 50 })
-      const scale = Math.min((editor.width * 0.8) / fabricImg.width, (editor.height * 0.8) / fabricImg.height)
-      fabricImg.scale(scale)
-      editor.add(fabricImg)
-      editor.setActiveObject(fabricImg)
-      editor.renderAll()
-    }
-    imgEl.src = generatedImageUrl
-  }
-
-  const handleSetBg = () => {
-    if (!generatedImageUrl || !fillBackgroundWithImage) return
-    const imgEl = new Image()
-    imgEl.crossOrigin = 'anonymous'
-    imgEl.onload = () => {
-      const fabricImg = new fabric.FabricImage(imgEl, { originX: 'left', originY: 'top' })
-      editor.add(fabricImg)
-      editor.setActiveObject(fabricImg)
-      fillBackgroundWithImage()
-    }
-    imgEl.src = generatedImageUrl
-  }
-
-  const handleSetBgAll = () => {
-    if (!generatedImageUrl || !editor || !slides || !setSlides) return
-    const imgEl = new Image()
-    imgEl.crossOrigin = 'anonymous'
-    imgEl.onload = () => {
-      const fabricImg = new fabric.FabricImage(imgEl, { originX: 'left', originY: 'top' })
-      const dims = { width: editor.width || 1080, height: editor.height || 1080 }
-      const scale = Math.max(dims.width / fabricImg.width, dims.height / fabricImg.height)
-      fabricImg.set({ scaleX: scale, scaleY: scale, originX: 'left', originY: 'top', left: 0, top: 0 })
-      editor.backgroundImage = fabricImg
-      editor.backgroundColor = null
-      editor.renderAll()
-      editor.fire('object:modified')
-      const bgJson = fabricImg.toObject(['crossOrigin'])
-      const updated = slides.map(s => {
-        const slide = typeof s === 'string' ? JSON.parse(s) : s
-        const clone = JSON.parse(JSON.stringify(slide))
-        clone.backgroundImage = bgJson
-        clone.background = null
-        return clone
-      })
-      setSlides(updated)
-    }
-    imgEl.src = generatedImageUrl
-  }
-
-  return (
-    <div className="flex flex-col gap-2 px-3 py-2">
-      {/* Prompt */}
-      <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Describe the image to generate..."
-        className="w-full h-20 bg-slate-900/50 text-slate-300 p-3 text-xs rounded-xl border border-slate-800 placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50 resize-none leading-relaxed"
-      />
-
-      {/* Generate button */}
-      <button
-        onClick={() => generateImage(prompt)}
-        disabled={isGenerating || !prompt.trim()}
-        className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-700 text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-transform shadow-lg"
-      >
-        {isGenerating ? (
-          <span className="flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> {progress}</span>
-        ) : (
-          <span className="flex items-center justify-center gap-2"><Wand2 size={16} /> Generate</span>
-        )}
-      </button>
-
-      {/* Error */}
-      {error && (
-        <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 rounded-xl p-2.5 border border-red-500/20">
-          <AlertCircle size={14} className="shrink-0 mt-0.5" /> <span>{error}</span>
-        </div>
-      )}
-
-      {/* Image preview */}
-      {generatedImageUrl && (
-        <div className="flex flex-col gap-2 animate-in fade-in">
-          <div className="relative rounded-xl overflow-hidden border border-slate-700">
-            <img src={generatedImageUrl} alt="AI Generated" className="w-full h-auto max-h-40 object-contain bg-slate-950" />
-            <button onClick={clearImage} className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/80 text-slate-400 active:text-white">
-              <X size={14} />
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <button onClick={handleAddToCanvas} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs active:scale-95 transition-transform">
-              <ImagePlus size={14} /> Add
-            </button>
-            <button onClick={handleSetBg} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs border border-slate-700 active:scale-95 transition-transform">
-              <Maximize size={14} /> BG
-            </button>
-            <button onClick={handleSetBgAll} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs border border-slate-700 active:scale-95 transition-transform">
-              <Layers size={14} /> All
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-// ═══════════════════════════════════════════════════════
 //  MAIN EXPORT
 // ═══════════════════════════════════════════════════════
 export function MobileToolsPanel({ activeTab, ...props }) {
@@ -625,11 +426,9 @@ export function MobileToolsPanel({ activeTab, ...props }) {
       return <GeneratePanel {...props} />
     case 'edit':
       return <ToolsPanel {...props} />
-    case 'caption':
+    case 'publish':
       // Pass all publish-related props through to CaptionPanel
       return <CaptionPanel {...props} />
-    case 'ai':
-      return <AiPanel {...props} />
     default:
       return null
   }
