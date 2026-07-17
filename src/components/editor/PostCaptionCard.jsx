@@ -1,11 +1,16 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Copy, Check, Send, Loader2, AlertCircle, Instagram, Facebook } from 'lucide-react'
+import { Copy, Check, Send, Loader2, AlertCircle, Instagram, Facebook, LayoutGrid, CircleDashed } from 'lucide-react'
 import { useState, useMemo, useEffect } from 'react'
 
 const PLATFORMS = [
   { id: 'instagram', label: 'Instagram', icon: Instagram, activeClass: 'bg-pink-500/20 text-pink-300 border-pink-500/50' },
   { id: 'facebook',  label: 'Facebook',  icon: Facebook,  activeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/50' },
+]
+
+const POST_TYPES = [
+  { id: 'feed',  label: 'Feed',  icon: LayoutGrid },
+  { id: 'story', label: 'Story', icon: CircleDashed },
 ]
 
 export function PostCaptionCard({
@@ -14,6 +19,7 @@ export function PostCaptionCard({
   cosmicData,
   // publish props
   publish, isPublishing, publishStatus, publishMessage, selectedPlatforms, togglePlatform, resetPublishStatus,
+  postType, setPostType,
   // editor context (needed by publish)
   editor, slides, currentIndexRef,
 }) {
@@ -123,6 +129,30 @@ export function PostCaptionCard({
       {/* ── PUBLISH SECTION ── */}
       <div className="border-t border-slate-800 p-4 flex flex-col gap-3">
 
+        {/* Post type: Feed / Story */}
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-full bg-slate-800/60 border border-slate-700 p-0.5">
+            {POST_TYPES.map(({ id, label, icon: Icon }) => {
+              const active = postType === id
+              return (
+                <button
+                  key={id}
+                  onClick={() => setPostType(id)}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    active ? 'bg-violet-500/25 text-violet-300' : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <Icon size={13} />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          {postType === 'story' && (
+            <span className="text-[10px] text-slate-500">9:16 · caption skipped on IG stories</span>
+          )}
+        </div>
+
         {/* Platform toggles */}
         <div className="flex gap-2">
           {PLATFORMS.map(({ id, label, icon: Icon, activeClass }) => {
@@ -151,7 +181,7 @@ export function PostCaptionCard({
           {isPublishing ? (
             <><Loader2 size={15} className="mr-2 animate-spin" />{publishMessage || 'Publishing…'}</>
           ) : (
-            <><Send size={15} className="mr-2" />Publish to Social</>
+            <><Send size={15} className="mr-2" />{postType === 'story' ? 'Publish Story' : 'Publish to Social'}</>
           )}
         </Button>
 
