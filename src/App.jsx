@@ -171,21 +171,12 @@ function Dashboard({ user, signOut }) {
         {/* LEFT: Tool cards */}
         <div className="lg:col-span-4 flex flex-col gap-6 lg:order-1">
           <EditorToolsCard
-            canvasDimensions={canvasDimensions}
-            setCanvasDimensions={setCanvasDimensions}
             addText={canvas.addText}
-            addRect={canvas.addRect}
-            addCircle={canvas.addCircle}
-            addTriangle={canvas.addTriangle}
-            addIcon={canvas.addIcon}
             bringForward={canvas.bringForward}
             sendBackward={canvas.sendBackward}
             duplicateSelected={canvas.duplicateSelected}
             deleteSelected={canvas.deleteSelected}
-            fillBackgroundWithImage={canvas.fillBackgroundWithImage}
             updateActiveObjectProp={canvas.updateActiveObjectProp}
-            updateBackgroundColor={canvas.updateBackgroundColor}
-            updateGradientBackground={canvas.updateGradientBackground}
             activeObject={activeObject}
             editor={editor}
             open={open}

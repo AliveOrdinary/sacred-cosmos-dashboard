@@ -58,6 +58,17 @@ export const ELEMENT_ACCENTS = {
   water: '#8FB3C7',
 }
 
+// Colors offered in the editors — brand palette only, so edits stay on-theme
+export const BRAND_SWATCHES = [
+  SLIDE_THEME.moonlight,
+  SLIDE_THEME.mist,
+  SLIDE_THEME.gold,
+  ELEMENT_ACCENTS.fire,
+  ELEMENT_ACCENTS.earth,
+  ELEMENT_ACCENTS.air,
+  ELEMENT_ACCENTS.water,
+]
+
 // Common brand colors to select from (can be customized)
 export const COLORS = ['#FDFCF0', '#0B0914', '#F2D388', '#8B5CF6', '#10B981', '#EF4444', '#3B82F6']
 

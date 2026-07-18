@@ -17,18 +17,7 @@ const POST_TYPES = [
   { id: 'feed',  label: 'Feed',  icon: LayoutGrid },
   { id: 'story', label: 'Story', icon: CircleDashed },
 ]
-import { ZODIAC_SIGNS, SLIDE_THEME, ELEMENT_ACCENTS } from '@/lib/constants'
-
-// Colors offered on mobile — brand palette only, so corrections stay on-theme
-const BRAND_SWATCHES = [
-  SLIDE_THEME.moonlight,
-  SLIDE_THEME.mist,
-  SLIDE_THEME.gold,
-  ELEMENT_ACCENTS.fire,
-  ELEMENT_ACCENTS.earth,
-  ELEMENT_ACCENTS.air,
-  ELEMENT_ACCENTS.water,
-]
+import { ZODIAC_SIGNS, SLIDE_THEME, BRAND_SWATCHES } from '@/lib/constants'
 
 // ─── SECTION LABEL ───
 function Label({ children }) {
