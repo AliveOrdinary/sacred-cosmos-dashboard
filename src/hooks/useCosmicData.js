@@ -110,10 +110,15 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
   // Item shape: { eyebrow?, title?, body, glyph?, accent? }
   // ---------------------------------------------------------------------------
   const _toTitleCase = (str) =>
-    String(str || '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+    String(str || '').toLowerCase().replace(/(^|[\s\-·])\p{L}/gu, (m) => m.toUpperCase())
 
   const _cleanTitle = (str) =>
     _toTitleCase(String(str || '').replace(/^[^\p{L}\p{N}]+/u, '').trim())
+
+  // For hook-style titles: keep the writer's sentence case, just strip any
+  // leading emoji and a trailing period.
+  const _cleanHook = (str) =>
+    String(str || '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/\.\s*$/, '').trim()
 
   const _dateLabel = (payload) => {
     const d = payload?.date ? new Date(payload.date) : new Date()
@@ -212,18 +217,32 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
         if (len > 34) size = Math.max(Math.round(40 * S), baseSize - (len - 34) * 1.4)
         else if (len > 18) size = Math.max(Math.round(50 * S), baseSize - (len - 18) * 1)
 
-        const title = new fabric.Textbox(item.title, {
+        const titleBase = {
           originX: 'left', originY: 'top',
           left: PAD, top: cursorY, width: safeW,
           fontFamily: SLIDE_THEME.titleFont,
           fontWeight: 600,
-          fontSize: size,
           fill: SLIDE_THEME.moonlight,
           textAlign: 'center',
           lineHeight: 1.12,
-        })
-        buildCanvas.add(title)
-        buildCanvas.renderAll()
+        }
+        // Measure the rendered lines and shrink until every line truly fits —
+        // length-based guessing breaks when font metrics differ at render time.
+        const minTitle = Math.round(30 * S)
+        let title = null
+        while (size >= minTitle) {
+          if (title) buildCanvas.remove(title)
+          title = new fabric.Textbox(item.title, { ...titleBase, fontSize: size })
+          buildCanvas.add(title)
+          buildCanvas.renderAll()
+          const lineCount = title.textLines ? title.textLines.length : 1
+          let maxLine = 0
+          for (let li = 0; li < lineCount; li++) {
+            maxLine = Math.max(maxLine, title.getLineWidth(li))
+          }
+          if (maxLine <= safeW * 0.98 && lineCount <= 3) break
+          size -= 3
+        }
         cursorY += title.height + Math.round(CH * 0.038)
       }
 
@@ -399,7 +418,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
           return {
             eyebrow: el.label,
-            title: _cleanTitle(lines[0] || el.label),
+            title: _cleanHook(lines[0]) || el.label,
             glyph: '✦',
             accent: el.accent,
             body,
