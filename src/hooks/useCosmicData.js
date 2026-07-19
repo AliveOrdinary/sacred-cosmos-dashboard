@@ -151,6 +151,16 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
       ])
     } catch { /* fabric falls back gracefully */ }
 
+    // Fabric caches character widths per font family. If anything measured
+    // before Fraunces/Inter finished loading, the cache holds fallback-font
+    // widths under the real font names — making every wrap and line-width
+    // measurement wrong even after the fonts load. Flush it so this build
+    // measures with the actual fonts.
+    try {
+      fabric.cache.clearFontCache(SLIDE_THEME.titleFont)
+      fabric.cache.clearFontCache(SLIDE_THEME.bodyFont)
+    } catch { /* older fabric builds: cache API absent, measurements unchanged */ }
+
     const PAD = Math.round(CW * 0.09)
     const safeW = CW - PAD * 2
 
