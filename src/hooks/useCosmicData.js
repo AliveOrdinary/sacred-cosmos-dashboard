@@ -143,12 +143,23 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     // The canvas measures text with whatever font is available *right now* —
     // wait for the display/body fonts so slides don't render in a fallback.
+    const fontSpecs = [
+      `600 64px ${SLIDE_THEME.titleFont}`,
+      `400 36px ${SLIDE_THEME.bodyFont}`,
+      `600 24px ${SLIDE_THEME.bodyFont}`,
+    ]
     try {
-      await Promise.all([
-        document.fonts.load(`600 64px ${SLIDE_THEME.titleFont}`),
-        document.fonts.load(`400 36px ${SLIDE_THEME.bodyFont}`),
-        document.fonts.load(`600 24px ${SLIDE_THEME.bodyFont}`),
-      ])
+      // load() resolving does not guarantee the face is usable yet — verify
+      // with check() and keep retrying up to 5s before measuring anything.
+      const deadline = Date.now() + 5000
+      await Promise.all(fontSpecs.map((f) => document.fonts.load(f)))
+      while (!fontSpecs.every((f) => document.fonts.check(f)) && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 150))
+        await Promise.all(fontSpecs.map((f) => document.fonts.load(f)))
+      }
+      if (!fontSpecs.every((f) => document.fonts.check(f))) {
+        console.warn('[slides] display fonts not confirmed loaded — measurements may use fallback metrics')
+      }
     } catch { /* fabric falls back gracefully */ }
 
     // Fabric caches character widths per font family. If anything measured
