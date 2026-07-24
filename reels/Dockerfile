@@ -13,9 +13,14 @@ WORKDIR /app
 COPY reels/package.json ./reels/
 RUN cd reels && npm install --no-audit --no-fund
 
+# Download Chromium BEFORE copying source, so editing a composition doesn't
+# re-download a few hundred MB on every rebuild. This layer only invalidates
+# when package.json changes.
+RUN cd reels && npx remotion browser ensure
+
 COPY brand ./brand
 COPY reels ./reels
-RUN cd reels && node scripts/sync-glyphs.mjs && npx remotion browser ensure
+RUN cd reels && node scripts/sync-glyphs.mjs
 
 EXPOSE 3123
 CMD ["node", "reels/server/index.mjs"]
