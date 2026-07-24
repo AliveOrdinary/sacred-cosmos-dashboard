@@ -4,7 +4,8 @@
 // Remotion renderMedia -> upload mp4 to Supabase 'social-videos' -> reel_renders row.
 import 'dotenv/config'
 import express from 'express'
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync, statSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
@@ -56,6 +57,16 @@ function spokenLines(composition, script) {
     { kind: 'water', text: script.water },
     { kind: 'cta', text: script.cta },
   ]
+}
+
+// TTS clips are content-addressed: same text + voice + model = same file, so
+// re-rendering an unedited script costs zero ElevenLabs credits. This matters
+// during tuning passes where the same script is rendered many times.
+function ttsCacheKey(text) {
+  return createHash('sha1')
+    .update([text, process.env.ELEVENLABS_VOICE_ID, process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2'].join('|'))
+    .digest('hex')
+    .slice(0, 16)
 }
 
 async function tts(text, outPath) {
@@ -111,19 +122,30 @@ async function runJob({ composition, date }) {
 
   // 1. TTS per line, measure durations
   const jobId = `${jobDate}-${composition}`
-  const ttsDir = join(PUBLIC_DIR, 'tts', jobId)
+  const ttsDir = join(PUBLIC_DIR, 'tts')
   mkdirSync(ttsDir, { recursive: true })
   const lines = []
   const raw = spokenLines(composition, script)
+  let synthesized = 0
+  let reused = 0
   for (let i = 0; i < raw.length; i++) {
-    const file = join(ttsDir, `${i}.mp3`)
-    const seconds = await tts(raw[i].text, file)
+    const key = ttsCacheKey(raw[i].text)
+    const file = join(ttsDir, `${key}.mp3`)
+    let seconds
+    if (existsSync(file)) {
+      seconds = (await parseFile(file)).format.duration || 2
+      reused += 1
+    } else {
+      seconds = await tts(raw[i].text, file)
+      synthesized += 1
+    }
     lines.push({
       ...raw[i],
-      src: `${SELF}/tts/${jobId}/${i}.mp3`,
+      src: `${SELF}/tts/${key}.mp3`,
       durationInFrames: Math.round(seconds * FPS) + 10, // small breath between lines
     })
   }
+  console.log(`TTS: ${synthesized} synthesized, ${reused} reused from cache`)
 
   // 2. Render
   const seed = Number(String(jobDate).replace(/\D/g, '').slice(-6)) || 1
@@ -151,9 +173,24 @@ async function runJob({ composition, date }) {
   const { data: pub } = supabase.storage.from('social-videos').getPublicUrl(objectPath)
 
   await upsertRender({ date: jobDate, composition, status: 'done', video_url: pub.publicUrl, caption: script.caption || '' })
-  rmSync(ttsDir, { recursive: true, force: true })
+  pruneTtsCache()
   console.log(`✔ ${jobId} → ${pub.publicUrl}`)
   return pub.publicUrl
+}
+
+// Keep the cache bounded: drop clips untouched for two weeks. Yesterday's
+// lines never recur (the prompt forbids repeats), so retention beyond that
+// buys nothing.
+function pruneTtsCache(maxAgeDays = 14) {
+  const dir = join(PUBLIC_DIR, 'tts')
+  if (!existsSync(dir)) return
+  const cutoff = Date.now() - maxAgeDays * 86400000
+  for (const f of readdirSync(dir)) {
+    const full = join(dir, f)
+    try {
+      if (statSync(full).mtimeMs < cutoff) rmSync(full, { force: true })
+    } catch { /* ignore */ }
+  }
 }
 
 const busy = new Set()

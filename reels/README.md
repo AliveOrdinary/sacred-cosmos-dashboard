@@ -33,6 +33,20 @@ npm run server                              # real renders against live data
   (`rendering` → `done` + `video_url`, or `error`). Date omitted = newest payload.
 - `GET :3123/health`
 
+## TTS caching
+
+Clips are content-addressed by `sha1(text + voiceId + modelId)` and stored in
+`public/tts/`, mounted as the `reels-tts` volume. Re-rendering an unedited
+script therefore costs **zero ElevenLabs credits** — only changed lines are
+synthesized. Server logs report `TTS: N synthesized, M reused from cache` each
+run. Entries untouched for 14 days are pruned after each successful render.
+
+Changing `ELEVENLABS_VOICE_ID` or `ELEVENLABS_MODEL_ID` invalidates the cache
+automatically (both are in the hash), so a voice swap re-synthesizes cleanly.
+
+Rough daily cost: ~600 characters/day across both reels, about 18k of the
+40k monthly credits on the Starter plan.
+
 ## Timing model
 
 Audio-driven: the server synthesizes each spoken line, measures the mp3, and

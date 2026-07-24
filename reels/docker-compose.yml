@@ -22,5 +22,8 @@ services:
       - "3123:3123"
     volumes:
       - reels-out:/app/reels/public/out
+      # TTS cache must outlive container rebuilds or re-renders re-bill credits
+      - reels-tts:/app/reels/public/tts
 volumes:
   reels-out:
+  reels-tts:
