@@ -1,6 +1,9 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  # Skip dashboard rebuilds when only homelab/n8n/brand files changed.
+  # `brand/` comes OFF this list once constants.js consumes the tokens at build time.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)reels' ':(exclude)workflows' ':(exclude)brand' ':(exclude)DECISIONS.md'"
 
 [build.environment]
   # Tell Netlify's secret scanner to specifically ignore these public keys
@@ -9,4 +12,9 @@
 [[redirects]]
   from = "/api/publish"
   to = "/.netlify/functions/publish"
+  status = 200
+
+[[redirects]]
+  from = "/api/render"
+  to = "/.netlify/functions/render"
   status = 200
