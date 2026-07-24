@@ -1,0 +1,103 @@
+{
+  "$schema": "sacred-cosmos brand tokens v1",
+  "direction": "annotated-observatory",
+  "color": {
+    "ground": {
+      "base": "#0B0A16",
+      "glowTop": "#16142B",
+      "vignette": "#070610"
+    },
+    "text": {
+      "primary": "#E8E2D5",
+      "body": "#DDD6C6",
+      "muted": "#B8B2A4",
+      "dim": "#B9B2A2"
+    },
+    "ink": {
+      "red": "#D8593E"
+    },
+    "ui": {
+      "tickOff": "#3A3652",
+      "dashRule": "rgba(216,213,206,0.28)"
+    },
+    "elementTint": {
+      "fire": "#C97C4A",
+      "earth": "#7C9A6D",
+      "air": "#A8B2C4",
+      "water": "#5E9EA0"
+    }
+  },
+  "type": {
+    "display": {
+      "family": "Fraunces",
+      "weight": 300,
+      "role": "sign names, reel hooks"
+    },
+    "body": {
+      "family": "Newsreader",
+      "weight": 300,
+      "lineHeight": 1.64,
+      "role": "horoscope text, reel beats"
+    },
+    "apparatus": {
+      "family": "Courier Prime",
+      "weight": 400,
+      "role": "masthead, labels, footer, dates"
+    }
+  },
+  "scale1080": {
+    "masthead": 25,
+    "eyebrow": 29,
+    "signTitle": 148,
+    "body": 47,
+    "reelHook": 106,
+    "reelBeat": 46,
+    "footer": 25,
+    "pagePadding": 96,
+    "reelPadding": 100
+  },
+  "rules": {
+    "redInkBudget": "max 2 red elements per frame: stamp + one underlined phrase",
+    "glyphRendering": "SVG from brand/glyphs only \u2014 never unicode, never emoji",
+    "underline": "hand-drawn quadratic stroke, width 6.5, round caps",
+    "dash": "2px dashed, text primary at 28% opacity"
+  },
+  "motion": {
+    "starDrift": {
+      "durationS": 60,
+      "translatePx": [
+        -38,
+        -24
+      ],
+      "alternate": true
+    },
+    "underlineDraw": {
+      "easing": "ease-out",
+      "sync": "audio beat start"
+    },
+    "beatReveal": {
+      "riseFromPx": 18,
+      "sync": "audio-driven durations via props"
+    },
+    "grain": {
+      "opacity": 0.06,
+      "blend": "overlay"
+    }
+  },
+  "audio": {
+    "voiceover": {
+      "provider": "elevenlabs",
+      "voiceId": "TBD_PINNED_AT_SETUP",
+      "perBeat": true
+    },
+    "bed": "royalty-free ambient under VO, ducked"
+  },
+  "background": {
+    "strategy": "procedural (Remotion-generated)",
+    "seedVariation": [
+      "starDensity",
+      "driftSpeed",
+      "grainFlicker"
+    ]
+  }
+}
