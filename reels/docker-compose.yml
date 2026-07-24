@@ -1,0 +1,15 @@
+# Run from the repo root:  docker compose -f reels/docker-compose.yml up -d --build
+services:
+  sacred-reels:
+    build:
+      context: ..
+      dockerfile: reels/Dockerfile
+    container_name: sacred-reels
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3123:3123"
+    volumes:
+      - reels-out:/app/reels/public/out
+volumes:
+  reels-out:
