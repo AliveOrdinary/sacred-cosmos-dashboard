@@ -82,7 +82,7 @@ Prompt-enforced budgets: hook ≤8 words, beats ≤14 words each → 12–15s to
 4. ✅ Dashboard: ReelPanel + useReelRender + `/api/render` proxy + `supabase/migration_reels.sql` (`constants.js` token migration still pending — separate refactor)
 5. ✅→$0 Procedural backgrounds replaced the AI batch; `Reel_Render_Trigger.json` webhook workflow added
 
-**Deploy checklist (laptop session):** run migration_reels.sql + create public `social-videos` bucket → import v8.5, Publisher v2.2, Reel Render Trigger into n8n → set Netlify env `N8N_RENDER_WEBHOOK_TARGET` → audition + pin ElevenLabs voice in `reels/.env` → `docker compose -f reels/docker-compose.yml up -d --build` on the homelab → test one manifestation render end-to-end → merge `reels-v1`.
+**Deploy checklist (laptop session):** full click-by-click walkthrough in `DEPLOY.md`. Summary: run migration_reels.sql + create public `social-videos` bucket → import v8.5, Publisher v2.2, Reel Render Trigger into n8n → set Netlify env `N8N_RENDER_WEBHOOK_TARGET` → audition + pin ElevenLabs voice in `reels/.env` → `docker compose -f reels/docker-compose.yml up -d --build` on the homelab → test one manifestation render end-to-end → merge `reels-v1`.
 
 ## 9. Key constraints & facts referenced
 
