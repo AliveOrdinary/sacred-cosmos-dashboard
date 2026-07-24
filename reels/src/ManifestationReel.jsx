@@ -1,6 +1,6 @@
 import React from 'react'
 import { AbsoluteFill, Audio, Sequence, interpolate, useCurrentFrame } from 'remotion'
-import { T, FONT } from './theme'
+import { T, FONT, fitText, splitHook } from './theme'
 import { ReelFrame } from './components/ReelFrame'
 import { Stamp, Ticks } from './components/Stamp'
 import { UnderlineDraw } from './components/UnderlineDraw'
@@ -8,22 +8,32 @@ import { UnderlineDraw } from './components/UnderlineDraw'
 // lines: [{ text, src, durationInFrames, kind: 'hook'|'beat'|'cta' }]
 // Timing is AUDIO-DRIVEN: the server measures each TTS clip and passes
 // durations as props. Visuals sync to the voice, never to a fixed grid.
+//
+// Layout is CONTENT-DRIVEN: the hook auto-sizes to its length, the tail phrase
+// always sits on its own line so the underline can't collide with wrapped
+// text, and the beat area flows below the hook instead of sitting at a fixed
+// offset. The whole block is vertically centred.
 
 const lineStart = (lines, i) => lines.slice(0, i).reduce((a, l) => a + l.durationInFrames, 0)
+const HOOK_WIDTH = 880
 
 const Beat = ({ text, isCta }) => {
   const frame = useCurrentFrame()
-  const o = interpolate(frame, [0, T.motion.beatReveal ? 10 : 10], [0, 1], { extrapolateRight: 'clamp' })
+  const o = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: 'clamp' })
   const y = interpolate(frame, [0, 10], [T.motion.beatReveal.riseFromPx, 0], { extrapolateRight: 'clamp' })
   return (
     <div
       style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
         fontFamily: FONT.body,
         fontWeight: 300,
         fontSize: T.scale1080.reelBeat,
         lineHeight: 1.58,
         color: T.color.text.dim,
-        maxWidth: 780,
+        maxWidth: 800,
         opacity: o,
         transform: `translateY(${y}px)`,
       }}
@@ -38,50 +48,58 @@ export const ManifestationReel = ({ lines, seed = 1, dateLabel = '', ambientSrc 
   const frame = useCurrentFrame()
   const hook = lines.find((l) => l.kind === 'hook')
   const beats = lines.filter((l) => l.kind !== 'hook')
-  const beatsDone = beats.filter((_, i) => frame >= lineStart(lines, lines.indexOf(beats[i]))).length
+  const beatsDone = beats.filter((b) => frame >= lineStart(lines, lines.indexOf(b))).length
 
-  // Underline the tail of the hook (last 3 words), drawn while the hook is spoken.
-  const words = (hook?.text || '').replace(/[.]+$/, '').split(' ')
-  const cut = Math.max(1, words.length - 3)
-  const head = words.slice(0, cut).join(' ')
-  const tail = words.slice(cut).join(' ')
+  const hookSize = fitText(hook?.text, { maxWidth: HOOK_WIDTH, maxSize: 104, minSize: 58, maxLines: 3 })
+  const { head, tail } = splitHook(hook?.text)
+  const hookFrames = hook?.durationInFrames || 40
 
   return (
     <ReelFrame seed={seed} mastLeft="DAILY MANIFESTATION" mastRight={dateLabel} ambientSrc={ambientSrc}>
       <Stamp glyph="mark-asterisk" startFrame={6} />
 
-      {/* Hook — persistent through the whole reel */}
-      <div
+      <AbsoluteFill
         style={{
-          position: 'absolute',
-          top: 470,
-          left: 100,
-          right: 100,
-          fontFamily: FONT.display,
-          fontWeight: 300,
-          fontSize: T.scale1080.reelHook,
-          lineHeight: 1.18,
-          maxWidth: 880,
+          padding: '300px 100px 240px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
         }}
       >
-        {head}{' '}
-        <UnderlineDraw startFrame={Math.floor((hook?.durationInFrames || 40) * 0.35)} durationInFrames={Math.floor((hook?.durationInFrames || 40) * 0.5)}>
-          {tail}
-        </UnderlineDraw>
-        .
-      </div>
+        {/* Hook — persistent, auto-sized, tail always on its own line */}
+        <div
+          style={{
+            fontFamily: FONT.display,
+            fontWeight: 300,
+            fontSize: hookSize,
+            lineHeight: 1.16,
+            maxWidth: HOOK_WIDTH,
+          }}
+        >
+          {head ? <span>{head} </span> : null}
+          <span style={{ display: 'inline-block', marginTop: head ? 4 : 0 }}>
+            <UnderlineDraw
+              startFrame={Math.floor(hookFrames * 0.35)}
+              durationInFrames={Math.floor(hookFrames * 0.5)}
+            >
+              {tail}
+            </UnderlineDraw>
+            .
+          </span>
+        </div>
 
-      {/* One beat visible at a time, in its own audio-timed sequence */}
-      {beats.map((line) => {
-        const i = lines.indexOf(line)
-        return (
-          <Sequence key={i} from={lineStart(lines, i)} durationInFrames={line.durationInFrames} layout="none">
-            <div style={{ position: 'absolute', top: 940, left: 100, right: 100 }}>
-              <Beat text={line.text} isCta={line.kind === 'cta'} />
-            </div>
-          </Sequence>
-        )
-      })}
+        {/* Beat area flows below the hook; reserved height prevents jitter */}
+        <div style={{ position: 'relative', minHeight: 260, marginTop: 96 }}>
+          {beats.map((line) => {
+            const i = lines.indexOf(line)
+            return (
+              <Sequence key={i} from={lineStart(lines, i)} durationInFrames={line.durationInFrames} layout="none">
+                <Beat text={line.text} isCta={line.kind === 'cta'} />
+              </Sequence>
+            )
+          })}
+        </div>
+      </AbsoluteFill>
 
       {/* Per-line voiceover */}
       {lines.map((line, i) =>

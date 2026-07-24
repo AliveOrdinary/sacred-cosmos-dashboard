@@ -1,6 +1,6 @@
 import React from 'react'
-import { Audio, Sequence, interpolate, useCurrentFrame } from 'remotion'
-import { T, FONT } from './theme'
+import { AbsoluteFill, Audio, Sequence, interpolate, useCurrentFrame } from 'remotion'
+import { T, FONT, fitText, splitHook } from './theme'
 import { ReelFrame } from './components/ReelFrame'
 import { UnderlineDraw } from './components/UnderlineDraw'
 import { Glyph } from './components/Glyph'
@@ -22,7 +22,7 @@ const ElementRow = ({ line, appearFrame }) => {
   const o = interpolate(frame, [appearFrame, appearFrame + 10], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   const y = interpolate(frame, [appearFrame, appearFrame + 10], [16, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   return (
-    <div style={{ display: 'flex', gap: 34, alignItems: 'flex-start', opacity: o, transform: `translateY(${y}px)`, marginBottom: 58 }}>
+    <div style={{ display: 'flex', gap: 34, alignItems: 'flex-start', opacity: o, transform: `translateY(${y}px)`, marginBottom: 44 }}>
       <div style={{ flexShrink: 0, paddingTop: 6 }}>
         <Glyph name={GLYPH_FOR[line.kind]} size={62} color={T.color.ink.red} />
       </div>
@@ -30,7 +30,7 @@ const ElementRow = ({ line, appearFrame }) => {
         <div style={{ fontFamily: FONT.mono, fontSize: 22, letterSpacing: '0.12em', color: T.color.text.muted, marginBottom: 10 }}>
           {SIGNS_FOR[line.kind]}
         </div>
-        <div style={{ fontFamily: FONT.body, fontWeight: 300, fontSize: 44, lineHeight: 1.42, color: T.color.text.body, maxWidth: 720 }}>
+        <div style={{ fontFamily: FONT.body, fontWeight: 300, fontSize: 42, lineHeight: 1.38, color: T.color.text.body, maxWidth: 720 }}>
           {line.text}
         </div>
       </div>
@@ -46,44 +46,54 @@ export const ElementsReel = ({ lines, seed = 1, dateLabel = '', ambientSrc = nul
   const ctaStart = cta ? lineStart(lines, lines.indexOf(cta)) : 0
   const ctaOn = cta && frame >= ctaStart
 
-  const words = (hook?.text || '').replace(/[.]+$/, '').split(' ')
-  const cut = Math.max(1, words.length - 3)
+  const hookSize = fitText(hook?.text, { maxWidth: 880, maxSize: 84, minSize: 54, maxLines: 2 })
+  const { head, tail } = splitHook(hook?.text)
+  const hookFrames = hook?.durationInFrames || 40
 
   return (
     <ReelFrame seed={seed} mastLeft="THE ELEMENTS · TONIGHT" mastRight={dateLabel} ambientSrc={ambientSrc}>
-      {/* Hook */}
-      <div
+      <AbsoluteFill
         style={{
-          position: 'absolute',
-          top: 320,
-          left: 100,
-          right: 100,
-          fontFamily: FONT.display,
-          fontWeight: 300,
-          fontSize: 84,
-          lineHeight: 1.18,
+          padding: '290px 100px 330px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
         }}
       >
-        {words.slice(0, cut).join(' ')}{' '}
-        <UnderlineDraw startFrame={Math.floor((hook?.durationInFrames || 40) * 0.35)} durationInFrames={Math.floor((hook?.durationInFrames || 40) * 0.5)}>
-          {words.slice(cut).join(' ')}
-        </UnderlineDraw>
-        .
-      </div>
+        {/* Hook — auto-sized, tail on its own line */}
+        <div
+          style={{
+            fontFamily: FONT.display,
+            fontWeight: 300,
+            fontSize: hookSize,
+            lineHeight: 1.16,
+            maxWidth: 880,
+            marginBottom: 76,
+          }}
+        >
+          {head ? <span>{head} </span> : null}
+          <span style={{ display: 'inline-block' }}>
+            <UnderlineDraw startFrame={Math.floor(hookFrames * 0.35)} durationInFrames={Math.floor(hookFrames * 0.5)}>
+              {tail}
+            </UnderlineDraw>
+            .
+          </span>
+        </div>
 
-      {/* Accumulating element rows */}
-      <div style={{ position: 'absolute', top: 640, left: 100, right: 100 }}>
-        {elements.map((line) => (
-          <ElementRow key={line.kind} line={line} appearFrame={lineStart(lines, lines.indexOf(line))} />
-        ))}
-      </div>
+        {/* Accumulating element rows */}
+        <div>
+          {elements.map((line) => (
+            <ElementRow key={line.kind} line={line} appearFrame={lineStart(lines, lines.indexOf(line))} />
+          ))}
+        </div>
+      </AbsoluteFill>
 
       {/* CTA */}
       {ctaOn ? (
         <div
           style={{
             position: 'absolute',
-            bottom: 240,
+            bottom: 236,
             left: 100,
             right: 100,
             fontFamily: FONT.body,
