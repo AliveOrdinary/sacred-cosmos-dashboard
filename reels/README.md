@@ -12,7 +12,9 @@ edit those, never hardcode styles here.
    list voices with `curl -H "xi-api-key: $KEY" https://api.elevenlabs.io/v1/voices`,
    generate a sample of the July 19 hook with 2–3 candidates, pick one, and pin its
    ID in `.env` as `ELEVENLABS_VOICE_ID`. Never change it after launch.
-3. `cp .env.example .env` and fill it in.
+3. Local runs: `cp .env.example .env` and fill it in. Portainer: set the same
+   variables in the stack's Environment variables section instead (see the
+   header of docker-compose.yml).
 4. Optional: drop a royalty-free ambient track at `public/audio/ambient.mp3`
    (it ducks to 12% under the voice automatically; reels work fine without it).
 5. From the **repo root**: `docker compose -f reels/docker-compose.yml up -d --build`

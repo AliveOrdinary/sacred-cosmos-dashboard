@@ -1,4 +1,9 @@
-# Run from the repo root:  docker compose -f reels/docker-compose.yml up -d --build
+# Portainer: Stacks -> Add stack -> Repository
+#   Repo URL: https://github.com/AliveOrdinary/sacred-cosmos-dashboard
+#   Reference: refs/heads/reels-v1   (switch to main after merge)
+#   Compose path: reels/docker-compose.yml
+#   Env vars: set the four below in the stack's "Environment variables" section
+# CLI alternative (from repo root): docker compose -f reels/docker-compose.yml up -d --build
 services:
   sacred-reels:
     build:
@@ -6,7 +11,13 @@ services:
       dockerfile: reels/Dockerfile
     container_name: sacred-reels
     restart: unless-stopped
-    env_file: .env
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID}
+      ELEVENLABS_MODEL_ID: ${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}
+      PORT: "3123"
     ports:
       - "3123:3123"
     volumes:
