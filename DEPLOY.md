@@ -99,6 +99,26 @@ only matters after merge; direct render-server tests below don't need it.
    the Portainer stack reference to `main`, then test the full loop from the
    dashboard: Generate → preview appears → Publish → check Instagram.
 
+## Updating the stack after a code change
+
+Portainer git stacks do **not** always re-pull. To be sure a change is live:
+
+1. Stacks → `sacred-reels` → **Pull and redeploy** (tick any "re-pull /
+   force rebuild" option offered). CLI equivalent from the repo root:
+   `git pull && docker compose -f reels/docker-compose.yml build --no-cache && docker compose -f reels/docker-compose.yml up -d`
+2. Confirm in the container logs that the first line reads
+   `Sacred Cosmos reel server — build marker: …`. If that line is missing,
+   the container is still running old code.
+3. `TTS: N synthesized, M reused from cache` after a render confirms the
+   caching build is live.
+
+Firewall sanity check (do this after step 4, from n8n itself rather than a
+shell): open the Reel Render Trigger workflow → "Call Render Server" node →
+**Test step**, or add a temporary HTTP Request node doing
+`GET http://<RENDER-HOST-LAN-IP>:3123/health`. Expect `{"ok":true}`.
+Portainer console alternative (n8n is Alpine, no curl):
+`wget -qO- http://<RENDER-HOST-LAN-IP>:3123/health`
+
 ## Known first-run gotchas
 
 - **FB reel upload 401**: Meta's `rupload` endpoint sometimes rejects

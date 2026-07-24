@@ -35,6 +35,7 @@ app.use(express.json())
 app.use(express.static(PUBLIC_DIR))
 
 // Bundle the Remotion project once at boot; renders reuse the serveUrl.
+console.log(`Sacred Cosmos reel server — build marker: layout-v2+tts-cache+cdn-bust`)
 console.log('Bundling Remotion project…')
 const serveUrl = await bundle({ entryPoint: join(ROOT, 'src', 'index.jsx') })
 console.log('Bundle ready.')
@@ -164,13 +165,33 @@ async function runJob({ composition, date }) {
   mkdirSync(dirname(outPath), { recursive: true })
   await renderMedia({ composition: comp, serveUrl, codec: 'h264', outputLocation: outPath, inputProps })
 
-  // 3. Upload
-  const objectPath = `${jobId}.mp4`
+  // 3. Upload. Supabase serves public objects through a CDN, so overwriting a
+  // fixed path leaves stale bytes cached for up to an hour — during a tuning
+  // session that looks exactly like "the render didn't change anything".
+  // A per-render suffix guarantees a fresh URL every time.
+  const stamp = Date.now()
+  const objectPath = `${jobId}-${stamp}.mp4`
   const { error: upErr } = await supabase.storage
     .from('social-videos')
-    .upload(objectPath, readFileSync(outPath), { contentType: 'video/mp4', upsert: true })
+    .upload(objectPath, readFileSync(outPath), {
+      contentType: 'video/mp4',
+      upsert: true,
+      cacheControl: '300',
+    })
   if (upErr) throw new Error('Storage upload failed: ' + upErr.message)
   const { data: pub } = supabase.storage.from('social-videos').getPublicUrl(objectPath)
+
+  // Drop earlier renders of this same date+composition so the bucket doesn't
+  // accumulate one file per tuning iteration.
+  try {
+    const { data: existing } = await supabase.storage.from('social-videos').list('', { limit: 100 })
+    const stale = (existing || [])
+      .filter((f) => f.name.startsWith(`${jobId}-`) && f.name !== objectPath)
+      .map((f) => f.name)
+    if (stale.length) await supabase.storage.from('social-videos').remove(stale)
+  } catch (e) {
+    console.warn('Could not prune old renders:', e.message)
+  }
 
   await upsertRender({ date: jobDate, composition, status: 'done', video_url: pub.publicUrl, caption: script.caption || '' })
   pruneTtsCache()
