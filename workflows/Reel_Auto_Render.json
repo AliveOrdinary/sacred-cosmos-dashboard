@@ -2,12 +2,12 @@
   "name": "Reel Auto-Render (6:20 AM)",
   "nodes": [
     {
-      "id": "ce6a612f-ee12-45a4-9142-343f9fd5ae04",
+      "id": "ffe8343e-adc1-4531-aabe-381dacd63ec0",
       "name": "Schedule 6:20 AM",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -460,
+        -240,
         0
       ],
       "parameters": {
@@ -23,86 +23,12 @@
       "notes": "Runs 20 minutes after the daily generator so reel_scripts exist."
     },
     {
-      "id": "b05aa73a-e0ed-41aa-9415-5242083e6b0f",
-      "name": "Fetch Today Payload",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        -350,
-        0
-      ],
-      "parameters": {
-        "operation": "getAll",
-        "tableId": "cosmic_data",
-        "returnAll": false,
-        "limit": 1,
-        "options": {
-          "sort": {
-            "sortFields": [
-              {
-                "field": "date",
-                "direction": "DESC"
-              }
-            ]
-          }
-        }
-      },
-      "notes": "Newest row only \u2014 date-equality filters proved unreliable in v8 hardening."
-    },
-    {
-      "id": "dd4c10e7-38e7-4739-939e-546d321c2b66",
-      "name": "Scripts Ready?",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -140,
-        0
-      ],
-      "parameters": {
-        "jsCode": "// Guard: only render if today's payload actually carries both reel scripts.\n// Prevents burning ElevenLabs credits on a failed generation, and gives the\n// Telegram alert something specific to say.\nconst rows = $input.all();\nconst payload = rows.length && rows[0].json ? rows[0].json : {};\nconst scripts = payload.reel_scripts || {};\nconst hasManifestation = !!(scripts.manifestation && scripts.manifestation.hook);\nconst hasElements = !!(scripts.elements && scripts.elements.hook);\nreturn [{\n  json: {\n    date: payload.date || null,\n    hasManifestation,\n    hasElements,\n    ready: hasManifestation || hasElements,\n    missing: [!hasManifestation && 'manifestation', !hasElements && 'elements'].filter(Boolean).join(', '),\n  },\n}];"
-      }
-    },
-    {
-      "id": "e371c871-ae56-4ccf-8f6d-536dabeb4376",
-      "name": "Any Script?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        70,
-        0
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "c1",
-              "leftValue": "={{ $json.ready }}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      }
-    },
-    {
-      "id": "73e2ad0c-685e-4980-bc6f-aae4eae59607",
+      "id": "a69f5b29-7798-4bc1-aef8-e3554204106d",
       "name": "Render Manifestation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        290,
+        0,
         0
       ],
       "parameters": {
@@ -116,31 +42,31 @@
         }
       },
       "onError": "continueRegularOutput",
-      "notes": "Fire-and-forget: the server returns 202 immediately and renders in the background. Update this URL if the render host moves. Non-fatal so a render outage never blocks the rest of the workflow."
+      "notes": "Fire-and-forget: returns 202 immediately, renders in the background.\nNo payload lookup needed here \u2014 the render server fetches the newest cosmic_data row itself, and if reel_scripts is missing it errors out BEFORE any ElevenLabs call and records status=error in reel_renders. Duplicating that check in this workflow only added bugs."
     },
     {
-      "id": "d3f70459-d7dd-4686-8523-379c3a8eef56",
+      "id": "b18b140f-1b3c-467f-8396-187cffc9cc81",
       "name": "Wait 8 min",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        500,
+        240,
         0
       ],
-      "webhookId": "4411f6af-da0f-4c2e-9bf1-2566ae884910",
+      "webhookId": "4cc52dbb-3251-46de-9d5b-16c850aee1b5",
       "parameters": {
         "amount": 8,
         "unit": "minutes"
       },
-      "notes": "Staggered so the two renders do not compete for CPU on the homelab."
+      "notes": "Stagger so the two renders do not compete for CPU on the homelab."
     },
     {
-      "id": "26f3b087-2a9d-4a21-bdfc-1394f6680e63",
+      "id": "0d402bdb-2a34-433c-9157-2c5229077284",
       "name": "Render Elements",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        710,
+        480,
         0
       ],
       "parameters": {
@@ -154,30 +80,7 @@
         }
       },
       "onError": "continueRegularOutput",
-      "notes": "Fire-and-forget: the server returns 202 immediately and renders in the background. Update this URL if the render host moves. Non-fatal so a render outage never blocks the rest of the workflow."
-    },
-    {
-      "id": "e0ed5a63-27a1-4d46-b18c-0aa5e3558d29",
-      "name": "Alert Missing Scripts",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        290,
-        200
-      ],
-      "parameters": {
-        "chatId": "259096829",
-        "text": "=\ud83c\udfac Reel auto-render skipped for {{ $json.date }} \u2014 no scripts found ({{ $json.missing }}). Check the 6 AM run, then render manually from the dashboard.",
-        "additionalFields": {
-          "appendAttribution": false
-        }
-      },
-      "credentials": {
-        "telegramApi": {
-          "id": "NsvSmyUheiCkF6fI",
-          "name": "Telegram account"
-        }
-      }
+      "notes": "Fire-and-forget: returns 202 immediately, renders in the background.\nNo payload lookup needed here \u2014 the render server fetches the newest cosmic_data row itself, and if reel_scripts is missing it errors out BEFORE any ElevenLabs call and records status=error in reel_renders. Duplicating that check in this workflow only added bugs."
     }
   ],
   "connections": {
@@ -185,47 +88,7 @@
       "main": [
         [
           {
-            "node": "Fetch Today Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Today Payload": {
-      "main": [
-        [
-          {
-            "node": "Scripts Ready?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Scripts Ready?": {
-      "main": [
-        [
-          {
-            "node": "Any Script?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Any Script?": {
-      "main": [
-        [
-          {
             "node": "Render Manifestation",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Alert Missing Scripts",
             "type": "main",
             "index": 0
           }

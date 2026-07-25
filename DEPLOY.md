@@ -121,18 +121,21 @@ Portainer console alternative (n8n is Alpine, no curl):
 
 ## Optional: auto-render both reels each morning (recommended)
 
-Import `workflows/Reel_Auto_Render.json`. It fires at **6:20 AM** (20 minutes
-after the daily generator), reads the newest `cosmic_data` row, and only
-proceeds if `reel_scripts` is actually present — a failed generation can never
-burn ElevenLabs credits, it just sends a Telegram note instead. It renders
-manifestation, waits 8 minutes so the two renders don't fight for CPU, then
-renders elements.
+Import `workflows/Reel_Auto_Render.json`. Four nodes: it fires at **6:20 AM**
+(20 minutes after the daily generator), asks the render server for the
+manifestation reel, waits 8 minutes so the two renders don't fight for CPU,
+then asks for elements.
+
+It deliberately does **no** payload checking. The render server already fetches
+the newest `cosmic_data` row and, if `reel_scripts` is missing, fails before any
+ElevenLabs call and records `status=error` in `reel_renders` — visible in the
+dashboard. An earlier version duplicated that check here and got both the row
+ordering and the payload nesting wrong; the server's version is the tested one.
 
 After importing:
 - Point **Render Manifestation** and **Render Elements** at your render host
   (same LAN URL as the Reel Render Trigger) if it isn't `sacred-reels:3123`.
-- Confirm the **Fetch Today Payload** node picked up the Supabase credential.
-- Activate it.
+- Activate it. No Supabase credential needed.
 
 Publishing stays manual: by the time you open the dashboard both videos are
 already rendered and waiting, so the morning is a preview and one Publish tap
