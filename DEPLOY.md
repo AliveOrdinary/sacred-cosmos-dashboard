@@ -121,6 +121,17 @@ Portainer console alternative (n8n is Alpine, no curl):
 
 ## Known first-run gotchas
 
+- **FB reels: `(#200) Subject does not have permission to post videos on this
+  target`** (confirmed on first run). The Page token posts photos fine but
+  `/video_reels` additionally requires **`publish_video`**. Options:
+  1. Regenerate the Page access token in Graph API Explorer with
+     `pages_manage_posts`, `pages_read_engagement` and `publish_video`, then
+     update the Bearer credential in n8n. Verify the page is Reels-eligible.
+  2. Skip the API entirely: link the IG account to the Page and enable
+     Instagram → Settings → "Sharing to other apps" so reels crosspost
+     automatically. Zero API work; recommended while FB is a secondary surface.
+  The four FB reel nodes are set to **continue on error**, so a missing scope
+  can never mark an already-published IG reel as failed.
 - **FB reel upload 401**: Meta's `rupload` endpoint sometimes rejects
   `Authorization: Bearer` and wants `OAuth <token>`. Fix is on the
   "FB Reel Upload" node note in v2.2: replace the credential with a manual

@@ -9,7 +9,10 @@ const COMPS = [
 ]
 
 function ReelRow({ comp, script, job, requestRender, setCaption, publishReel }) {
-  const [platforms, setPlatforms] = useState(['instagram', 'facebook'])
+  // Instagram only by default: FB Reels needs publish_video on the Page token,
+  // which the image-posting token does not carry. Toggle Facebook on once that
+  // scope is granted.
+  const [platforms, setPlatforms] = useState(['instagram'])
   const toggle = (p) =>
     setPlatforms((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]))
 

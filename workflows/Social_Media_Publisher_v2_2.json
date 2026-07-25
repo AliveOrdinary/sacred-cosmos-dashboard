@@ -1085,7 +1085,9 @@
           "id": "RjbMc8OiBz6UZC9v",
           "name": "Bearer Auth account"
         }
-      }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "FB Reels needs publish_video scope on the Page token (photo posting only needs pages_manage_posts). Without it this returns #200 \"Subject does not have permission to post videos on this target\". Non-fatal by design: an IG reel that already published must not be reported as failed."
     },
     {
       "id": "f3edf46f-d9d5-485b-a232-ea983a7de22d",
@@ -1118,7 +1120,8 @@
           "name": "Bearer Auth account"
         }
       },
-      "notes": "If this returns 401, Meta may require \"Authorization: OAuth <token>\" instead of Bearer on rupload \\u2014 swap the credential for a header parameter in that case."
+      "notes": "If this returns 401, Meta may require \"Authorization: OAuth <token>\" instead of Bearer on rupload \\u2014 swap the credential for a header parameter in that case. FB Reels needs publish_video scope on the Page token (photo posting only needs pages_manage_posts). Without it this returns #200 \"Subject does not have permission to post videos on this target\". Non-fatal by design: an IG reel that already published must not be reported as failed.",
+      "onError": "continueRegularOutput"
     },
     {
       "id": "b502106b-8faf-4301-aa4f-18f8dbd7c01b",
@@ -1132,7 +1135,9 @@
       "parameters": {
         "amount": 10
       },
-      "webhookId": "813b481b-0df8-4900-8d9f-c5c7dc829d20"
+      "webhookId": "813b481b-0df8-4900-8d9f-c5c7dc829d20",
+      "onError": "continueRegularOutput",
+      "notes": "FB Reels needs publish_video scope on the Page token (photo posting only needs pages_manage_posts). Without it this returns #200 \"Subject does not have permission to post videos on this target\". Non-fatal by design: an IG reel that already published must not be reported as failed."
     },
     {
       "id": "718d7d67-0821-4a2f-bbb5-dc011b6e821b",
@@ -1176,7 +1181,9 @@
           "id": "RjbMc8OiBz6UZC9v",
           "name": "Bearer Auth account"
         }
-      }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "FB Reels needs publish_video scope on the Page token (photo posting only needs pages_manage_posts). Without it this returns #200 \"Subject does not have permission to post videos on this target\". Non-fatal by design: an IG reel that already published must not be reported as failed."
     }
   ],
   "pinData": {},
