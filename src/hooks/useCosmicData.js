@@ -579,37 +579,26 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     try {
       const items = []
 
+      // Intro slide: the week's theme (keeps each part at intro + 6 = 7 slides,
+      // inside the Graph API's 10-image carousel ceiling)
+      items.push({
+        eyebrow: `This Week · Part ${part} of 2`,
+        title: 'The Forecast',
+        glyph: '✦',
+        accent: '#D8593E',
+        body: wc.weekly_theme,
+      })
+
+      // One slide per sign: cosmic energy + one guidance line. Everything
+      // trimmed here (purpose, insight, lucky moments) moves to the caption.
       signsForPart.forEach((sign) => {
         const data = wc[sign.key]
-        
-        // Slide 1: Energy, Heart, Purpose
-        const part1Body = [
-          `🌟 Cosmic Energy\n${data.cosmic_energy}`,
-          `💖 Heart Guidance\n${data.heart_guidance}`,
-          `🎯 Life Purpose\n${data.life_purpose}`
-        ].join('\n\n')
-
-        // Slide 2: Insight, Moments, Challenge
-        const part2Body = [
-          `🧘 Spiritual Insight\n${data.spiritual_insight}`,
-          `✨ Lucky Moments\n${data.lucky_moments}`,
-          `🌱 Gentle Challenge\n${data.gentle_challenge}`
-        ].join('\n\n')
-
         items.push({
           eyebrow: `Weekly Forecast · ${sign.element}`,
           title: sign.name,
           glyph: sign.symbol,
           accent: ELEMENT_ACCENTS[sign.element],
-          body: part1Body,
-        })
-
-        items.push({
-          eyebrow: 'Weekly Forecast · Part Two',
-          title: sign.name,
-          glyph: sign.symbol,
-          accent: ELEMENT_ACCENTS[sign.element],
-          body: part2Body,
+          body: `${data.cosmic_energy}\n\n${data.heart_guidance}`,
         })
       })
 
@@ -620,7 +609,12 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
       await _loadIntoEditor(newSlides, CW, CH)
 
       if (wc.weekly_theme) {
-        setPostCaption(`${wc.weekly_theme}\n\nSwipe through to see what the cosmos has in store for your sign this week! ✨👇\n\n#WeeklyHoroscope #CosmicForecast`)
+        const signLines = signsForPart
+          .map((sign) => `${sign.symbol} ${sign.name} — ${wc[sign.key].lucky_moments}`)
+          .join('\n')
+        setPostCaption(
+          `${wc.weekly_theme}\n\nYour lucky moment this week:\n${signLines}\n\nSave your sign, and check the other part for the rest of the zodiac.\n\n#weeklyhoroscope #astrology #zodiacsigns`
+        )
       }
     } catch (e) {
       console.error('Failed to generate weekly carousel:', e)

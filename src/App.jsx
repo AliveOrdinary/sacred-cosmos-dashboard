@@ -15,6 +15,8 @@ import { DataFeedCard } from "@/components/editor/DataFeedCard"
 import { PostCaptionCard } from "@/components/editor/PostCaptionCard"
 import { LoginPage } from "@/components/LoginPage"
 import { MobileToolsPanel } from "@/components/editor/MobileToolsPanel"
+import { ReelPanel } from "@/components/editor/ReelPanel"
+import { useReelRender } from "@/hooks/useReelRender"
 
 function Dashboard({ user, signOut }) {
   const canvasRef = useRef(null)
@@ -47,6 +49,9 @@ function Dashboard({ user, signOut }) {
 
   // Publish to social (Supabase Storage → n8n webhook)
   const publishHook = usePublish()
+
+  // Reel rendering + publishing (homelab Remotion server via /api/render)
+  const reel = useReelRender()
 
   // Deep-link auto-generate: nudge links open /?generate=<type> and the right
   // generator runs as soon as cosmic data is loaded. Story types also flip the
@@ -197,6 +202,8 @@ function Dashboard({ user, signOut }) {
             handleGenerateDailyOverview={data.handleGenerateDailyOverview}
           />
 
+          <ReelPanel cosmicData={data.cosmicData} reel={reel} />
+
         </div>
       </div>
 
@@ -285,6 +292,11 @@ function Dashboard({ user, signOut }) {
             isLoading={data.isLoading}
             slides={slides}
           />
+          {mobileTab === 'generate' && (
+            <div className="px-2 pb-4">
+              <ReelPanel cosmicData={data.cosmicData} reel={reel} />
+            </div>
+          )}
         </div>
 
         {/* BOTTOM TAB BAR — pinned at the very bottom */}

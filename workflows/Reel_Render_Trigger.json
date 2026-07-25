@@ -1,0 +1,84 @@
+{
+  "name": "Reel Render Trigger",
+  "nodes": [
+    {
+      "id": "cb31a7f1-4a9a-44a8-91c8-6143daf9904e",
+      "name": "Render Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "6b70dd9c-f664-43f5-99bd-e716b6071fab",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reel-render",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "b55ed881-295e-4133-af5b-e52cef3c4b51",
+      "name": "Extract Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const b = $json.body || {};\nconst composition = b.composition === 'elements' ? 'elements' : 'manifestation';\nreturn [{ json: { composition, date: b.date || null } }];"
+      }
+    },
+    {
+      "id": "a7598b7a-1678-498f-9dfa-6606ac7e3369",
+      "name": "Call Render Server",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://sacred-reels:3123/render",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ composition: $json.composition, date: $json.date }) }}",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Adjust the host if the render container is not on the same Docker network as n8n (e.g. http://<homelab-ip>:3123/render)."
+    }
+  ],
+  "connections": {
+    "Render Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Job": {
+      "main": [
+        [
+          {
+            "node": "Call Render Server",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

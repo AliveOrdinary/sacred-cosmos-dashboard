@@ -1,0 +1,25 @@
+{
+  "name": "sacred-cosmos-reels",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync-glyphs": "node scripts/sync-glyphs.mjs",
+    "studio": "npm run sync-glyphs && remotion studio src/index.jsx",
+    "server": "npm run sync-glyphs && node server/index.mjs"
+  },
+  "dependencies": {
+    "@fontsource/courier-prime": "^5.1.0",
+    "@fontsource/fraunces": "^5.1.0",
+    "@fontsource/newsreader": "^5.1.0",
+    "@remotion/bundler": "^4.0.240",
+    "@remotion/cli": "^4.0.240",
+    "@remotion/renderer": "^4.0.240",
+    "@supabase/supabase-js": "^2.47.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.0",
+    "music-metadata": "^10.5.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.240"
+  }
+}

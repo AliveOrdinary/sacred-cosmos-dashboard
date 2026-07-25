@@ -1,7 +1,7 @@
 # Sacred Cosmos — Reels & Brand Expansion: Decision Log
 
 **Date:** July 24, 2026
-**Status:** All decisions locked. Step 0 in progress (tokens + glyph library delivered).
+**Status:** All decisions locked. Steps 0-4 built on branch `reels-v1` (July 24). Remaining: deploy v8.5 + publisher v2.2 to n8n, run migration + create bucket, pin ElevenLabs voice, `docker compose up` the render server, review + merge branch.
 
 ## 0. Final locked decisions (July 24 session close)
 
@@ -75,12 +75,14 @@ Prompt-enforced budgets: hook ≤8 words, beats ≤14 words each → 12–15s to
 
 ## 8. Build order
 
-0. Brand direction pick → `brand.tokens.json` + approved static mockups ← **current step**
-1. Daily Workflow v8.5: `reel_scripts` prompt + schema + parser
-2. Remotion project (ManifestationReel, ElementsReel) on the token system + render container
-3. Publisher v2.2: Reels branch (with status polling) + weekly 7-slide restructure
-4. Dashboard: reel buttons, Netlify render proxy, preview via `reel_renders`, publish integration; `constants.js` migrated to tokens
-5. Background library generation batch (~$10 one-time) + `social-videos` bucket + `reel_renders` migration
+0. ✅ Brand tokens + SVG glyph library (on `main`; elements redrawn as literal marks in v1.1)
+1. ✅ Daily Workflow v8.5 (`workflows/Daily-Astro-Workflow-v8_5.json`) — import into n8n
+2. ✅ Remotion project + render server (`reels/`) — see reels/README.md for setup
+3. ✅ Publisher v2.2 (`workflows/Social_Media_Publisher_v2_2.json`) + weekly 7-slide condensation in `useCosmicData.js`
+4. ✅ Dashboard: ReelPanel + useReelRender + `/api/render` proxy + `supabase/migration_reels.sql` (`constants.js` token migration still pending — separate refactor)
+5. ✅→$0 Procedural backgrounds replaced the AI batch; `Reel_Render_Trigger.json` webhook workflow added
+
+**Deploy checklist (laptop session):** full click-by-click walkthrough in `DEPLOY.md`. Summary: run migration_reels.sql + create public `social-videos` bucket → import v8.5, Publisher v2.2, Reel Render Trigger into n8n → set Netlify env `N8N_RENDER_WEBHOOK_TARGET` → audition + pin ElevenLabs voice in `reels/.env` → `docker compose -f reels/docker-compose.yml up -d --build` on the homelab → test one manifestation render end-to-end → merge `reels-v1`.
 
 ## 9. Key constraints & facts referenced
 
