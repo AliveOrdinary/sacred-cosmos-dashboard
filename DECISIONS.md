@@ -1,7 +1,12 @@
 # Sacred Cosmos — Reels & Brand Expansion: Decision Log
 
 **Date:** July 24, 2026
-**Status:** All decisions locked. Steps 0-4 built on branch `reels-v1` (July 24). Remaining: deploy v8.5 + publisher v2.2 to n8n, run migration + create bucket, pin ElevenLabs voice, `docker compose up` the render server, review + merge branch.
+**Status:** SHIPPED July 24, 2026. First reel published to Instagram the same
+night. Full pipeline live: v8.5.3 generation with reel scripts + auto-retry,
+homelab Remotion render server (TTS-cached, CDN-busted), dashboard ReelPanel,
+Publisher v2.2 (IG reels working; FB reels pending publish_video scope or the
+IG-side crosspost toggle), Fabric carousels migrated to Annotated Observatory
+on shared brand tokens. Originally built on branch `reels-v1` (July 24). Remaining: deploy v8.5 + publisher v2.2 to n8n, run migration + create bucket, pin ElevenLabs voice, `docker compose up` the render server, review + merge branch.
 
 ## 0. Final locked decisions (July 24 session close)
 

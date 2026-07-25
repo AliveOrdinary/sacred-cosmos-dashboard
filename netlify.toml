@@ -1,9 +1,10 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  # Skip dashboard rebuilds when only homelab/n8n/brand files changed.
-  # `brand/` comes OFF this list once constants.js consumes the tokens at build time.
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)reels' ':(exclude)workflows' ':(exclude)brand' ':(exclude)DECISIONS.md'"
+  # Skip dashboard rebuilds when only homelab/n8n files changed.
+  # brand/ is NOT excluded: constants.js imports the tokens and glyphs at
+  # build time, so brand changes must rebuild the site.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)reels' ':(exclude)workflows' ':(exclude)DECISIONS.md' ':(exclude)DEPLOY.md'"
 
 [build.environment]
   # Tell Netlify's secret scanner to specifically ignore these public keys
