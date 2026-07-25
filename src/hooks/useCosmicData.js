@@ -3,7 +3,7 @@ import * as fabric from 'fabric'
 import { supabase } from '@/lib/supabase'
 import sundayData from '../../sample data sunday.json'
 import restdaysData from '../../sample data restdays.json'
-import { ZODIAC_SIGNS, SLIDE_THEME, ELEMENT_ACCENTS } from '@/lib/constants'
+import { ZODIAC_SIGNS, SLIDE_THEME, ELEMENT_ACCENTS, GLYPH_SVGS, GLYPH_KEY_FOR_SYMBOL } from '@/lib/constants'
 
 // Sample data for local development
 const SAMPLE_DATA = {
@@ -144,9 +144,11 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     // The canvas measures text with whatever font is available *right now* —
     // wait for the display/body fonts so slides don't render in a fallback.
     const fontSpecs = [
+      `300 64px ${SLIDE_THEME.titleFont}`,
       `600 64px ${SLIDE_THEME.titleFont}`,
       `400 36px ${SLIDE_THEME.bodyFont}`,
-      `600 24px ${SLIDE_THEME.bodyFont}`,
+      `400 24px '${SLIDE_THEME.monoFont}'`,
+      `700 24px '${SLIDE_THEME.monoFont}'`,
     ]
     try {
       // load() resolving does not guarantee the face is usable yet — verify
@@ -170,6 +172,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     try {
       fabric.cache.clearFontCache(SLIDE_THEME.titleFont)
       fabric.cache.clearFontCache(SLIDE_THEME.bodyFont)
+      fabric.cache.clearFontCache(SLIDE_THEME.monoFont)
     } catch { /* older fabric builds: cache API absent, measurements unchanged */ }
 
     const PAD = Math.round(CW * 0.09)
@@ -177,11 +180,30 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     const buildCanvas = new fabric.StaticCanvas(null, { width: CW, height: CH })
     const newSlides = []
+    const INK = SLIDE_THEME.ink
+
+    // Masthead date label, e.g. "JUL 24"
+    const mastDate = (opts.dateLabel || new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit' })).toUpperCase()
+
+    // Parse each needed stamp glyph once; loadSVGFromString is async.
+    const stampCache = {}
+    const glyphFor = (symbol) => GLYPH_KEY_FOR_SYMBOL[symbol] || 'mark-asterisk'
+    const neededKeys = [...new Set(items.map((it) => glyphFor(it.glyph)))]
+    for (const key of neededKeys) {
+      try {
+        const { objects, options } = await fabric.loadSVGFromString(GLYPH_SVGS[key])
+        const good = (objects || []).filter(Boolean)
+        good.forEach((o) => o.set({ stroke: INK, fill: '' }))
+        stampCache[key] = { objects: good, options }
+      } catch (e) {
+        console.warn('[slides] glyph parse failed for', key, e)
+      }
+    }
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]
       buildCanvas.clear()
-      const accent = item.accent || SLIDE_THEME.gold
+      const eyebrowTint = item.accent || SLIDE_THEME.footerInk
 
       // ── Ground: void with a soft indigo bloom falling from the top ──
       buildCanvas.backgroundColor = new fabric.Gradient({
@@ -194,38 +216,76 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
         ],
       })
 
-      // ── Signature glyph, barely there ──
-      if (item.glyph) {
-        buildCanvas.add(new fabric.FabricText(item.glyph, {
-          fontFamily: SLIDE_THEME.titleFont,
-          fontSize: Math.round(CW * 0.95),
-          fill: accent,
-          opacity: item.accent ? 0.05 : 0.035,
-          originX: 'center',
-          originY: 'center',
-          left: CW / 2,
-          top: CH / 2,
+      // ── Faint starfield, deterministic per slide ──
+      for (let st = 0; st < 9; st++) {
+        const sx = ((st * 137 + i * 61) % 100) / 100
+        const sy = ((st * 211 + i * 97) % 100) / 100
+        buildCanvas.add(new fabric.Circle({
+          left: Math.round(sx * CW), top: Math.round(CH * 0.16 + sy * CH * 0.8),
+          radius: Math.max(1.4, (1.2 + (st % 3) * 0.5) * S),
+          fill: SLIDE_THEME.moonlight,
+          opacity: 0.16 + (st % 4) * 0.07,
+          originX: 'center', originY: 'center',
         }))
       }
 
-      let cursorY = isStory ? Math.round(CH * 0.09) : PAD
+      // ── Masthead: mono brand line left, date right, dashed rule under ──
+      const mastY = isStory ? Math.round(CH * 0.06) : Math.round(CH * 0.055)
+      const mastFont = {
+        fontFamily: SLIDE_THEME.monoFont, fontWeight: 400,
+        fontSize: Math.round(23 * S), charSpacing: 110,
+        fill: SLIDE_THEME.footerInk,
+      }
+      buildCanvas.add(new fabric.FabricText('SACRED COSMOS', {
+        ...mastFont, originX: 'left', originY: 'top', left: PAD, top: mastY,
+      }))
+      buildCanvas.add(new fabric.FabricText(mastDate, {
+        ...mastFont, originX: 'right', originY: 'top', left: CW - PAD, top: mastY,
+      }))
+      const ruleY = mastY + Math.round(42 * S)
+      buildCanvas.add(new fabric.Line([PAD, ruleY, CW - PAD, ruleY], {
+        stroke: SLIDE_THEME.dashRule,
+        strokeWidth: Math.max(2, Math.round(2 * S)),
+        strokeDashArray: [Math.round(9 * S), Math.round(9 * S)],
+      }))
 
-      // ── Eyebrow ──
+      // ── Red stamp, top-right below the rule ──
+      const stampEntry = stampCache[glyphFor(item.glyph)]
+      if (stampEntry && stampEntry.objects.length) {
+        const stampSize = Math.round(140 * S)
+        const cx = CW - PAD - stampSize / 2
+        const cy = ruleY + Math.round(36 * S) + stampSize / 2
+        buildCanvas.add(new fabric.Circle({
+          originX: 'center', originY: 'center', left: cx, top: cy,
+          radius: stampSize / 2,
+          fill: '', stroke: INK, strokeWidth: Math.max(3, Math.round(3.5 * S)),
+          angle: 8, opacity: 0.9,
+        }))
+        const glyphGroup = fabric.util.groupSVGElements(
+          stampEntry.objects.map((o) => (o.clone ? o : o)), stampEntry.options
+        )
+        glyphGroup.set({ originX: 'center', originY: 'center', left: cx, top: cy, angle: 8, opacity: 0.9 })
+        glyphGroup.scaleToHeight(stampSize * 0.52)
+        buildCanvas.add(glyphGroup)
+      }
+
+      let cursorY = ruleY + Math.round(CH * (isStory ? 0.075 : 0.09))
+
+      // ── Eyebrow: lowercase mono label, left-aligned, element-tinted ──
       if (item.eyebrow) {
-        const longEyebrow = item.eyebrow.length > 38
-        const eyebrow = new fabric.Textbox(item.eyebrow.toUpperCase(), {
+        const eyebrow = new fabric.Textbox(item.eyebrow.toLowerCase(), {
           originX: 'left', originY: 'top',
-          left: PAD, top: cursorY, width: safeW,
-          fontFamily: SLIDE_THEME.bodyFont,
-          fontWeight: 600,
-          fontSize: Math.round((longEyebrow ? 21 : 24) * S),
-          charSpacing: longEyebrow ? 180 : 320,
-          fill: accent,
-          textAlign: 'center',
+          left: PAD, top: cursorY, width: Math.round(safeW * 0.78),
+          fontFamily: SLIDE_THEME.monoFont,
+          fontWeight: 400,
+          fontSize: Math.round(26 * S),
+          charSpacing: 130,
+          fill: eyebrowTint,
+          textAlign: 'left',
         })
         buildCanvas.add(eyebrow)
         buildCanvas.renderAll()
-        cursorY += eyebrow.height + Math.round(CH * 0.032)
+        cursorY += eyebrow.height + Math.round(CH * 0.024)
       }
 
       // ── Title (Fraunces, warm ivory) ──
@@ -242,10 +302,10 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
           originX: 'left', originY: 'top',
           left: PAD, top: cursorY, width: safeW,
           fontFamily: SLIDE_THEME.titleFont,
-          fontWeight: 600,
+          fontWeight: 300,
           fill: SLIDE_THEME.moonlight,
-          textAlign: 'center',
-          lineHeight: 1.12,
+          textAlign: 'left',
+          lineHeight: 1.1,
         }
         // Measure the rendered lines and shrink until every line truly fits —
         // length-based guessing breaks when font metrics differ at render time.
@@ -267,43 +327,46 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
         cursorY += title.height + Math.round(CH * 0.038)
       }
 
-      // ── Accent rule ──
+      // ── Red ink rule under the title ──
       const rule = new fabric.Rect({
-        originX: 'center', originY: 'top',
-        left: CW / 2, top: cursorY,
-        width: Math.round(70 * S),
-        height: Math.max(2, Math.round(2 * S)),
-        fill: accent,
-        opacity: 0.85,
+        originX: 'left', originY: 'top',
+        left: PAD, top: cursorY,
+        width: Math.round(110 * S),
+        height: Math.max(3, Math.round(4 * S)),
+        fill: INK,
+        opacity: 0.9,
+        rx: 2, ry: 2,
       })
       buildCanvas.add(rule)
       cursorY += rule.height
 
       // ── Footer: handle left, slide dots right ──
       const footerY = CH - Math.round(CH * (isStory ? 0.055 : 0.07))
-      buildCanvas.add(new fabric.FabricText(SLIDE_THEME.handle.toUpperCase(), {
+      buildCanvas.add(new fabric.FabricText(SLIDE_THEME.handle, {
         originX: 'left', originY: 'center',
         left: PAD, top: footerY,
-        fontFamily: SLIDE_THEME.bodyFont,
-        fontWeight: 500,
-        fontSize: Math.round(21 * S),
-        charSpacing: 220,
+        fontFamily: SLIDE_THEME.monoFont,
+        fontWeight: 400,
+        fontSize: Math.round(23 * S),
+        charSpacing: 110,
         fill: SLIDE_THEME.footerInk,
       }))
 
       if (!isStory && items.length > 1) {
-        const r = Math.max(4, Math.round(6 * S))
-        const gap = Math.round(16 * S)
-        const totalW = items.length * r * 2 + (items.length - 1) * gap
+        // Tick marks, matching the reel progress language
+        const tw = Math.round(34 * S)
+        const th = Math.max(2, Math.round(3 * S))
+        const gap = Math.round(12 * S)
+        const totalW = items.length * tw + (items.length - 1) * gap
         let dx = CW - PAD - totalW
         for (let d = 0; d < items.length; d++) {
-          buildCanvas.add(new fabric.Circle({
+          buildCanvas.add(new fabric.Rect({
             originX: 'left', originY: 'center',
             left: dx, top: footerY,
-            radius: r,
-            fill: d === i ? accent : SLIDE_THEME.dotOff,
+            width: tw, height: th,
+            fill: d === i ? INK : SLIDE_THEME.dotOff,
           }))
-          dx += r * 2 + gap
+          dx += tw + gap
         }
       }
 
@@ -311,17 +374,17 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
       const bodyZoneTop = cursorY + Math.round(CH * 0.02)
       const bodyZoneBottom = footerY - Math.round(CH * 0.05)
       const maxBodyH = bodyZoneBottom - bodyZoneTop
-      const bodyW = Math.round(safeW * 0.92)
+      const bodyW = Math.round(safeW * 0.96)
 
       const bodyBase = {
         originX: 'left', originY: 'top',
-        left: (CW - bodyW) / 2,
+        left: PAD,
         width: bodyW,
         fontFamily: SLIDE_THEME.bodyFont,
-        fontWeight: 400,
+        fontWeight: 300,
         fill: SLIDE_THEME.mist,
-        textAlign: 'center',
-        lineHeight: 1.55,
+        textAlign: 'left',
+        lineHeight: 1.6,
       }
 
       let bodySize = opts.bodyFontStart || Math.round((isStory ? 40 : 34) * S)

@@ -35,34 +35,68 @@ export const BACKGROUND_COLORS = [
 // Basic fonts to select from
 export const FONTS = ['sans-serif', 'serif', 'monospace', 'Inter', 'Playfair Display', 'Fraunces']
 
-// ── Cosmic editorial slide system ─────────────────────────────────────────
-// Design tokens for auto-generated slides. Change `handle` to your real IG handle.
-export const SLIDE_THEME = {
-  void: '#0B0914',       // base ground
-  bloom: '#1A1735',      // indigo bloom at the top of the gradient
-  moonlight: '#F1EEE4',  // titles — warm ivory, not pure white
-  mist: '#B9B4C7',       // body text — lavender-gray
-  gold: '#E4C57E',       // default accent: eyebrow, rule, active dot
-  footerInk: '#565070',  // footer handle
-  dotOff: '#3A3552',     // inactive slide dots
-  handle: '@sacredcosmos',
-  titleFont: 'Fraunces',
-  bodyFont: 'Inter',
+// ── Annotated Observatory slide system ────────────────────────────────────
+// Values come from brand/brand.tokens.json — the single source of truth
+// shared with the Remotion reels. Change the brand there, not here.
+import brandTokens from '../../brand/brand.tokens.json'
+
+// Sign + apparatus glyphs as raw SVG, same files the reels consume.
+import glyphAries from '../../brand/glyphs/aries.svg?raw'
+import glyphTaurus from '../../brand/glyphs/taurus.svg?raw'
+import glyphGemini from '../../brand/glyphs/gemini.svg?raw'
+import glyphCancer from '../../brand/glyphs/cancer.svg?raw'
+import glyphLeo from '../../brand/glyphs/leo.svg?raw'
+import glyphVirgo from '../../brand/glyphs/virgo.svg?raw'
+import glyphLibra from '../../brand/glyphs/libra.svg?raw'
+import glyphScorpio from '../../brand/glyphs/scorpio.svg?raw'
+import glyphSagittarius from '../../brand/glyphs/sagittarius.svg?raw'
+import glyphCapricorn from '../../brand/glyphs/capricorn.svg?raw'
+import glyphAquarius from '../../brand/glyphs/aquarius.svg?raw'
+import glyphPisces from '../../brand/glyphs/pisces.svg?raw'
+import glyphAsterisk from '../../brand/glyphs/mark-asterisk.svg?raw'
+
+export const GLYPH_SVGS = {
+  aries: glyphAries, taurus: glyphTaurus, gemini: glyphGemini, cancer: glyphCancer,
+  leo: glyphLeo, virgo: glyphVirgo, libra: glyphLibra, scorpio: glyphScorpio,
+  sagittarius: glyphSagittarius, capricorn: glyphCapricorn, aquarius: glyphAquarius,
+  pisces: glyphPisces, 'mark-asterisk': glyphAsterisk,
 }
 
-// Per-element accent tints for sign/element slides (replaces gold)
-export const ELEMENT_ACCENTS = {
-  fire: '#E8A87C',
-  earth: '#A8C0A0',
-  air: '#A9C1D9',
-  water: '#8FB3C7',
+// Unicode symbols still flow through item.glyph from the generators — map
+// them back to SVG keys so no call site needs changing.
+export const GLYPH_KEY_FOR_SYMBOL = {
+  '\u2648': 'aries', '\u2649': 'taurus', '\u264A': 'gemini', '\u264B': 'cancer',
+  '\u264C': 'leo', '\u264D': 'virgo', '\u264E': 'libra', '\u264F': 'scorpio',
+  '\u2650': 'sagittarius', '\u2651': 'capricorn', '\u2652': 'aquarius',
+  '\u2653': 'pisces', '\u2726': 'mark-asterisk',
 }
+
+export const SLIDE_THEME = {
+  void: brandTokens.color.ground.base,
+  bloom: brandTokens.color.ground.glowTop,
+  moonlight: brandTokens.color.text.primary,
+  mist: brandTokens.color.text.body,
+  ink: brandTokens.color.ink.red,
+  gold: brandTokens.color.ink.red, // deprecated alias — red ink is THE accent now
+  footerInk: brandTokens.color.text.muted,
+  dotOff: brandTokens.color.ui.tickOff,
+  dashRule: brandTokens.color.ui.dashRule,
+  handle: '@sacredcosmos',
+  titleFont: brandTokens.type.display.family,
+  bodyFont: brandTokens.type.body.family,
+  monoFont: brandTokens.type.apparatus.family,
+}
+
+// Per-element tints from the brand tokens. Chrome stays red-ink; these tint
+// the eyebrow text only, so element carousels stay distinguishable without
+// breaking the one-accent rule.
+export const ELEMENT_ACCENTS = { ...brandTokens.color.elementTint }
 
 // Colors offered in the editors — brand palette only, so edits stay on-theme
 export const BRAND_SWATCHES = [
   SLIDE_THEME.moonlight,
   SLIDE_THEME.mist,
-  SLIDE_THEME.gold,
+  SLIDE_THEME.ink,
   ELEMENT_ACCENTS.fire,
   ELEMENT_ACCENTS.earth,
   ELEMENT_ACCENTS.air,
@@ -73,35 +107,14 @@ export const BRAND_SWATCHES = [
 export const COLORS = ['#FDFCF0', '#0B0914', '#F2D388', '#8B5CF6', '#10B981', '#EF4444', '#3B82F6']
 
 export const GRADIENTS = [
-  // Warm
-  { name: 'Sunset',     colors: ['#f953c6', '#b91d73'] },
-  { name: 'Peach',      colors: ['#ed4264', '#ffedbc'] },
-  { name: 'Golden',     colors: ['#f7971e', '#ffd200'] },
-  { name: 'Coral',      colors: ['#ff7e5f', '#feb47b'] },
-  { name: 'Rose',       colors: ['#f43b47', '#453a94'] },
-  { name: 'Mango',      colors: ['#ffe259', '#ffa751'] },
-  { name: 'Cherry',     colors: ['#eb3349', '#f45c43'] },
-  // Cool
-  { name: 'Ocean',      colors: ['#43cea2', '#185a9d'] },
-  { name: 'Sky',        colors: ['#56ccf2', '#2f80ed'] },
-  { name: 'Teal',       colors: ['#11998e', '#38ef7d'] },
-  { name: 'Ice',        colors: ['#a8edea', '#fed6e3'] },
-  { name: 'Mint',       colors: ['#00b09b', '#96c93d'] },
-  { name: 'Azure',      colors: ['#00c6ff', '#0072ff'] },
-  // Purple / Mystic
-  { name: 'Mystic',     colors: ['#8E2DE2', '#4A00E0'] },
-  { name: 'Aurora',     colors: ['#a18cd1', '#fbc2eb'] },
-  { name: 'Cosmic',     colors: ['#6a3093', '#a044ff'] },
-  { name: 'Dusk',       colors: ['#2c3e50', '#fd746c'] },
-  { name: 'Lavender',   colors: ['#e0c3fc', '#8ec5fc'] },
-  { name: 'Nebula',     colors: ['#fc4a1a', '#f7b733'] },
-  { name: 'Galactic',   colors: ['#ee0979', '#ff6a00'] },
-  // Dark
-  { name: 'Midnight',   colors: ['#0f0c29', '#302b63'] },
-  { name: 'Dark Space', colors: ['#141E30', '#243B55'] },
-  { name: 'Carbon',     colors: ['#1c1c1c', '#3a3a3a'] },
-  { name: 'Void',       colors: ['#000000', '#434343'] },
-  { name: 'Abyss',      colors: ['#232526', '#414345'] },
+  // Disciplined family on the shared dark base — the feed reads as one body
+  // of work. Element duotones + two neutrals; nothing brighter belongs here.
+  { name: 'Observatory', colors: ['#16142B', '#0B0A16'] },
+  { name: 'Vignette',    colors: ['#0B0A16', '#070610'] },
+  { name: 'Ember',       colors: ['#2A1610', '#0B0A16'] },
+  { name: 'Moss',        colors: ['#142014', '#0B0A16'] },
+  { name: 'Silver',      colors: ['#191D26', '#0B0A16'] },
+  { name: 'Deep Teal',   colors: ['#0E1F20', '#0B0A16'] },
 ]
 
 // 12 zodiac signs used by the sign carousel generator
