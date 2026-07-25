@@ -50,8 +50,16 @@ export const ManifestationReel = ({ lines, seed = 1, dateLabel = '', ambientSrc 
   const beats = lines.filter((l) => l.kind !== 'hook')
   const beatsDone = beats.filter((b) => frame >= lineStart(lines, lines.indexOf(b))).length
 
-  const hookSize = fitText(hook?.text, { maxWidth: HOOK_WIDTH, maxSize: 104, minSize: 58, maxLines: 3 })
+  // Split first: the tail is what constrains the type size, because it cannot
+  // wrap without breaking the underline.
   const { head, tail } = splitHook(hook?.text)
+  const hookSize = fitText(hook?.text, {
+    maxWidth: HOOK_WIDTH,
+    maxSize: 104,
+    minSize: 58,
+    maxLines: 3,
+    singleLine: tail,
+  })
   const hookFrames = hook?.durationInFrames || 40
 
   return (

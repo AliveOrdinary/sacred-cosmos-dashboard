@@ -12,7 +12,7 @@ export const UnderlineDraw = ({ children, startFrame = 0, durationInFrames = 20 
   })
   const dash = 980
   return (
-    <span style={{ position: 'relative', whiteSpace: 'nowrap' }}>
+    <span style={{ position: 'relative', whiteSpace: 'nowrap', maxWidth: '100%', display: 'inline-block' }}>
       {children}
       <svg
         viewBox="0 0 620 22"

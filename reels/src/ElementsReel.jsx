@@ -90,8 +90,14 @@ export const ElementsReel = ({ lines, seed = 1, dateLabel = '', ambientSrc = nul
   const ctaStart = cta ? lineStart(lines, lines.indexOf(cta)) : 0
   const ctaOn = cta && frame >= ctaStart
 
-  const hookSize = fitText(hook?.text, { maxWidth: 880, maxSize: 84, minSize: 54, maxLines: 2 })
   const { head, tail } = splitHook(hook?.text)
+  const hookSize = fitText(hook?.text, {
+    maxWidth: 880,
+    maxSize: 84,
+    minSize: 54,
+    maxLines: 2,
+    singleLine: tail,
+  })
   const hookFrames = hook?.durationInFrames || 40
 
   return (

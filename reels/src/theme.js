@@ -29,23 +29,39 @@ export function mulberry32(a) {
 
 // Rough width-aware font sizing. Fraunces averages ~0.52em per glyph, and
 // word-boundary wrapping wastes some of each line, so we assume 0.58 to stay
-// safe. Returns the largest size (within range) that fits `maxLines`.
-export function fitText(text, { maxWidth, maxSize, minSize, maxLines = 3 }) {
+// safe. `singleLine` is text that must fit on ONE line (the underlined tail,
+// which cannot wrap without breaking the underline) — sizing ignores it at
+// your peril: a long tail overflows the frame entirely.
+export function fitText(text, { maxWidth, maxSize, minSize, maxLines = 3, singleLine = null }) {
   const chars = (text || '').length
   if (!chars) return maxSize
   for (let size = maxSize; size > minSize; size -= 2) {
     const charsPerLine = Math.max(1, Math.floor(maxWidth / (size * 0.58)))
-    if (Math.ceil(chars / charsPerLine) <= maxLines) return size
+    const wrapsOk = Math.ceil(chars / charsPerLine) <= maxLines
+    // one char of margin, and a slightly wider per-glyph estimate, because a
+    // clipped tail is a ruined frame while a smaller hook is merely smaller
+    const tailFits =
+      !singleLine || singleLine.length <= Math.floor(maxWidth / (size * 0.62)) - 1
+    if (wrapsOk && tailFits) return size
   }
   return minSize
 }
 
 // Splits a hook into head text plus a tail phrase that always renders on its
 // own line, so the hand-drawn underline can never collide with wrapped text.
-export function splitHook(text, tailWords = 3) {
+// The tail takes as many trailing words as fit a small character budget: a
+// short tail keeps the display type large, since the tail cannot wrap.
+export function splitHook(text, { tailChars = 16, maxTailWords = 3 } = {}) {
   const clean = (text || '').trim().replace(/[.]+$/, '')
-  const words = clean.split(/\s+/)
-  if (words.length <= tailWords) return { head: '', tail: clean }
-  const cut = words.length - tailWords
-  return { head: words.slice(0, cut).join(' '), tail: words.slice(cut).join(' ') }
+  const words = clean.split(/\s+/).filter(Boolean)
+  if (words.length <= 1) return { head: '', tail: clean }
+
+  let tail = words.slice(-1)
+  for (let n = 2; n <= Math.min(maxTailWords, words.length - 1); n++) {
+    const candidate = words.slice(-n)
+    if (candidate.join(' ').length <= tailChars) tail = candidate
+    else break
+  }
+  const cut = words.length - tail.length
+  return { head: words.slice(0, cut).join(' '), tail: tail.join(' ') }
 }
