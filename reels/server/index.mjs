@@ -17,6 +17,11 @@ const here = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(here, '..')
 const PUBLIC_DIR = join(ROOT, 'public')
 const FPS = 30
+// Silence appended after each spoken line. Elements needs a real beat between
+// lines because each one addresses a different audience; manifestation is one
+// continuous argument and reads better tight.
+const BREATH_FRAMES = { manifestation: 10, elements: 24 }
+const HOOK_EXTRA_FRAMES = { manifestation: 4, elements: 14 }
 const PORT = Number(process.env.PORT || 3123)
 const SELF = process.env.PUBLIC_HOST || `http://127.0.0.1:${PORT}`
 
@@ -143,7 +148,10 @@ async function runJob({ composition, date }) {
     lines.push({
       ...raw[i],
       src: `${SELF}/tts/${key}.mp3`,
-      durationInFrames: Math.round(seconds * FPS) + 10, // small breath between lines
+      durationInFrames:
+        Math.round(seconds * FPS) +
+        (BREATH_FRAMES[composition] ?? 10) +
+        (raw[i].kind === 'hook' ? HOOK_EXTRA_FRAMES[composition] ?? 0 : 0),
     })
   }
   console.log(`TTS: ${synthesized} synthesized, ${reused} reused from cache`)

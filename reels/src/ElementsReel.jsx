@@ -17,20 +17,64 @@ const SIGNS_FOR = {
   water: 'cancer · scorpio · pisces',
 }
 
-const ElementRow = ({ line, appearFrame }) => {
+// A row fades in when the narrator reaches it, sits at full weight while its
+// line is spoken, then recedes to a dim "already said" state. That contrast is
+// what makes four lines read as four separate call-outs rather than a list.
+const ElementRow = ({ line, appearFrame, endFrame }) => {
   const frame = useCurrentFrame()
-  const o = interpolate(frame, [appearFrame, appearFrame + 10], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-  const y = interpolate(frame, [appearFrame, appearFrame + 10], [16, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const IN = 10
+  const entry = interpolate(frame, [appearFrame, appearFrame + IN], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+  const y = interpolate(frame, [appearFrame, appearFrame + IN], [16, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+  // 1 while active, easing to 0 once the voice has moved on
+  const active = interpolate(frame, [endFrame - 8, endFrame + 6], [1, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+  const opacity = entry * (0.42 + 0.58 * active)
+  const glyphSize = 62 + 6 * active
+
   return (
-    <div style={{ display: 'flex', gap: 34, alignItems: 'flex-start', opacity: o, transform: `translateY(${y}px)`, marginBottom: 44 }}>
-      <div style={{ flexShrink: 0, paddingTop: 6 }}>
-        <Glyph name={GLYPH_FOR[line.kind]} size={62} color={T.color.ink.red} />
+    <div
+      style={{
+        display: 'flex',
+        gap: 34,
+        alignItems: 'flex-start',
+        opacity,
+        transform: `translateY(${y}px)`,
+        marginBottom: 44,
+      }}
+    >
+      <div style={{ flexShrink: 0, paddingTop: 6, width: 68 }}>
+        <Glyph name={GLYPH_FOR[line.kind]} size={glyphSize} color={T.color.ink.red} />
       </div>
       <div>
-        <div style={{ fontFamily: FONT.mono, fontSize: 22, letterSpacing: '0.12em', color: T.color.text.muted, marginBottom: 10 }}>
+        <div
+          style={{
+            fontFamily: FONT.mono,
+            fontSize: 22,
+            letterSpacing: '0.12em',
+            color: active > 0.5 ? T.color.ink.red : T.color.text.muted,
+            marginBottom: 10,
+          }}
+        >
           {SIGNS_FOR[line.kind]}
         </div>
-        <div style={{ fontFamily: FONT.body, fontWeight: 300, fontSize: 42, lineHeight: 1.38, color: T.color.text.body, maxWidth: 720 }}>
+        <div
+          style={{
+            fontFamily: FONT.body,
+            fontWeight: 300,
+            fontSize: 42,
+            lineHeight: 1.38,
+            color: active > 0.5 ? T.color.text.primary : T.color.text.body,
+            maxWidth: 720,
+          }}
+        >
           {line.text}
         </div>
       </div>
@@ -82,9 +126,17 @@ export const ElementsReel = ({ lines, seed = 1, dateLabel = '', ambientSrc = nul
 
         {/* Accumulating element rows */}
         <div>
-          {elements.map((line) => (
-            <ElementRow key={line.kind} line={line} appearFrame={lineStart(lines, lines.indexOf(line))} />
-          ))}
+          {elements.map((line) => {
+            const start = lineStart(lines, lines.indexOf(line))
+            return (
+              <ElementRow
+                key={line.kind}
+                line={line}
+                appearFrame={start}
+                endFrame={start + line.durationInFrames}
+              />
+            )
+          })}
         </div>
       </AbsoluteFill>
 
