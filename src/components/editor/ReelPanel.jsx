@@ -46,9 +46,17 @@ function ReelRow({ comp, script, job, requestRender, setCaption, publishReel }) 
         </Button>
       </div>
 
-      {!script && (
+      {/* Only complain about a missing script when there is also nothing to
+          show. Previously this appeared above an existing render from an
+          earlier day, which read as a contradiction. */}
+      {!script && !ready && (
         <p className="text-xs text-slate-500">
-          No script for today yet. It arrives with the 6 AM v8.5 run.
+          No script for today yet. It arrives with the 6 AM run.
+        </p>
+      )}
+      {!script && ready && (
+        <p className="text-xs text-amber-500/80">
+          Showing an earlier render{job.date ? ` from ${job.date}` : ''}. Today's script isn't in the payload yet.
         </p>
       )}
 
@@ -60,12 +68,15 @@ function ReelRow({ comp, script, job, requestRender, setCaption, publishReel }) 
 
       {ready && (
         <>
+          {job.date && script && (
+            <p className="text-[11px] text-slate-500">Rendered for {job.date}</p>
+          )}
           <video
             key={job.videoUrl}
             src={job.videoUrl}
             controls
             playsInline
-            className="w-full max-h-96 rounded-lg bg-black"
+            className="w-full rounded-lg bg-black max-h-[70vh]"
           />
           <textarea
             value={job.caption}
@@ -124,25 +135,45 @@ function ReelRow({ comp, script, job, requestRender, setCaption, publishReel }) 
  * (reel_scripts, added in Daily Workflow v8.5); renders run on the homelab
  * Remotion server; publishing reuses the n8n publisher with post_type 'reel'.
  */
-export function ReelPanel({ cosmicData, reel }) {
+export function ReelPanel({ cosmicData, reel, variant = 'stack' }) {
   const scripts = cosmicData?.[0]?.reel_scripts || {}
+  const wide = variant === 'wide'
+  const rows = COMPS.map((c) => (
+    <ReelRow
+      key={c.key}
+      comp={c}
+      script={scripts[c.key]}
+      job={reel.jobs[c.key]}
+      requestRender={reel.requestRender}
+      setCaption={reel.setCaption}
+      publishReel={reel.publishReel}
+    />
+  ))
+
+  // 'wide' is the desktop Reels view: no card chrome, two columns, tall previews.
+  if (wide) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Clapperboard size={18} className="text-rose-400" /> Reels
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Rendered on the homelab. Scripts arrive with the 6 AM run; renders follow at 6:20.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4 items-start">{rows}</div>
+      </div>
+    )
+  }
+
   return (
     <Card className="bg-slate-900 border-slate-800">
       <CardContent className="p-4 space-y-3">
         <h3 className="text-sm font-semibold text-white flex items-center gap-2">
           <Clapperboard size={16} className="text-rose-400" /> Reels
         </h3>
-        {COMPS.map((c) => (
-          <ReelRow
-            key={c.key}
-            comp={c}
-            script={scripts[c.key]}
-            job={reel.jobs[c.key]}
-            requestRender={reel.requestRender}
-            setCaption={reel.setCaption}
-            publishReel={reel.publishReel}
-          />
-        ))}
+        {rows}
       </CardContent>
     </Card>
   )

@@ -5,7 +5,7 @@ const PUBLISH_WEBHOOK = import.meta.env.VITE_N8N_PUBLISH_WEBHOOK_URL
 const POLL_MS = 6000
 const POLL_MAX = 100 // ~10 minutes
 
-const EMPTY = { status: 'idle', videoUrl: null, caption: '', error: null, publishState: null }
+const EMPTY = { status: 'idle', videoUrl: null, caption: '', error: null, publishState: null, date: null }
 
 /**
  * Manages reel renders: trigger via /api/render (Netlify -> n8n -> render
@@ -41,6 +41,7 @@ export function useReelRender() {
         videoUrl: row.video_url,
         caption: row.caption || '',
         error: row.error,
+        date: row.date || null,
       })
     })
     const t = timers.current
@@ -70,7 +71,13 @@ export function useReelRender() {
         const row = await fetchLatest(composition)
         if (row?.status === 'done' && row.video_url) {
           clearInterval(timers.current[composition])
-          patch(composition, { status: 'done', videoUrl: row.video_url, caption: row.caption || '', error: null })
+          patch(composition, {
+            status: 'done',
+            videoUrl: row.video_url,
+            caption: row.caption || '',
+            error: null,
+            date: row.date || null,
+          })
         } else if (row?.status === 'error') {
           clearInterval(timers.current[composition])
           patch(composition, { status: 'error', error: row.error || 'Render failed' })
