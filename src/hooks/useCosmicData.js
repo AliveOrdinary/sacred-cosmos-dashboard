@@ -20,6 +20,14 @@ const SAMPLE_DATA = {
  *
  * @param {{ editor, setSlides, setActiveSlideIndex, canvasDimensions, setCanvasDimensions }} deps
  */
+// Canonical output formats. 'feed' is the square default the editor loads with;
+// 'story' is 9:16 for stories and the practice card.
+const SLIDE_FORMATS = {
+  feed: { width: 1080, height: 1080 },
+  portrait: { width: 1080, height: 1350 },
+  story: { width: 1080, height: 1920 },
+}
+
 export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDimensions, setCanvasDimensions }) {
   const [isLoading, setIsLoading] = useState(false)
   const editorRef = useRef(editor)
@@ -136,8 +144,12 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
   }
 
   const _buildSlides = async (items, opts = {}) => {
-    const CW = opts.width || canvasDimensions.width
-    const CH = opts.height || canvasDimensions.height
+    // Every generator builds at a DECLARED format. Previously these fell back
+    // to the live canvasDimensions, so generating a story left the canvas 9:16
+    // and every feed generator afterwards silently inherited it.
+    const fmt = SLIDE_FORMATS[opts.format] || null
+    const CW = opts.width || fmt?.width || SLIDE_FORMATS.feed.width
+    const CH = opts.height || fmt?.height || SLIDE_FORMATS.feed.height
     const isStory = CH / CW > 1.3
     const S = CW / 1080 // horizontal scale factor relative to design size
 
@@ -425,6 +437,13 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
     await ed.loadFromJSON(newSlides[0])
     ed.setDimensions({ width: CW, height: CH })
     ed.renderAll()
+
+    // Keep React state in step with what was actually built. useFabricCanvas
+    // re-applies canvasDimensions to the editor on change, so if state lags the
+    // frame reverts and only a refresh appears to fix it.
+    setCanvasDimensions((prev) =>
+      prev.width === CW && prev.height === CH ? prev : { width: CW, height: CH }
+    )
   }
 
   // ---------------------------------------------------------------------------
@@ -567,7 +586,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
         titleFontSize: 64,
-        bodyFontStart: Math.round(36 * Math.sqrt(canvasDimensions.height / 1080)),
+        bodyFontStart: 36,
       })
       await _loadIntoEditor(newSlides, CW, CH)
 
@@ -597,10 +616,9 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
     setIsLoading(true)
     try {
-      // Stories are always 1080×1920 — switch canvas dimensions first
-      const STORY_W = 1080
-      const STORY_H = 1920
-      setCanvasDimensions({ width: STORY_W, height: STORY_H })
+      // Frame follows the declared format via _loadIntoEditor; set it up front
+      // too so the canvas visibly switches while the slides build.
+      setCanvasDimensions(SLIDE_FORMATS.story)
 
       const items = storySlides.map((slide) => ({
         eyebrow: _brandEyebrow(payload, 'Sacred Cosmos'),
@@ -610,8 +628,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
       }))
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
-        width: STORY_W,
-        height: STORY_H,
+        format: 'story',
         bodyFontStart: 42,
       })
       await _loadIntoEditor(newSlides, CW, CH)
@@ -667,7 +684,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
       const { newSlides, CW, CH } = await _buildSlides(items, {
         titleFontSize: 56,
-        bodyFontStart: Math.round(36 * Math.sqrt(canvasDimensions.height / 1080)),
+        bodyFontStart: 36,
       })
       await _loadIntoEditor(newSlides, CW, CH)
 
@@ -707,8 +724,7 @@ export function useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDi
 
       // Practice runs as a story in the posting rotation — build it 9:16 natively
       const { newSlides, CW, CH } = await _buildSlides(items, {
-        width: 1080,
-        height: 1920,
+        format: 'story',
         titleFontSize: 52,
       })
       await _loadIntoEditor(newSlides, CW, CH)
