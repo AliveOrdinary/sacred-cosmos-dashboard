@@ -238,7 +238,17 @@ function pruneTtsCache(maxAgeDays = 14) {
 const busy = new Set()
 
 app.post('/render', (req, res) => {
-  const composition = req.body?.composition === 'elements' ? 'elements' : 'manifestation'
+  // Whitelist, never coerce: the old ternary silently rewrote every
+  // unrecognised composition to 'manifestation', so a correct request for a
+  // composition this server didn't know about failed as the wrong one.
+  const requested = String(req.body?.composition || 'daily')
+  if (!COMPOSITION_ID[requested]) {
+    return res.status(400).json({
+      error: `Unknown composition "${requested}"`,
+      allowed: Object.keys(COMPOSITION_ID),
+    })
+  }
+  const composition = requested
   const date = req.body?.date || null
   if (busy.has(composition)) return res.status(409).json({ status: 'busy', composition })
   busy.add(composition)
