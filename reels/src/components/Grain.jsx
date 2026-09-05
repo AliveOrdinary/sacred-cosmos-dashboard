@@ -3,7 +3,7 @@ import { AbsoluteFill, useCurrentFrame } from 'remotion'
 import { T, W, H } from '../theme'
 
 // Film grain that re-seeds every few frames for a subtle analog flicker.
-export const Grain = () => {
+export const Grain = ({ opacity }) => {
   const frame = useCurrentFrame()
   const seed = Math.floor(frame / 4)
   return (
@@ -13,7 +13,7 @@ export const Grain = () => {
           <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed={seed} />
           <feColorMatrix type="saturate" values="0" />
           <feComponentTransfer>
-            <feFuncA type="linear" slope={T.motion.grain.opacity} />
+            <feFuncA type="linear" slope={opacity ?? T.motion.grain.opacity} />
           </feComponentTransfer>
         </filter>
         <rect width="100%" height="100%" filter="url(#grain)" />

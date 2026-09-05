@@ -20,8 +20,8 @@ const FPS = 30
 // Silence appended after each spoken line. Elements needs a real beat between
 // lines because each one addresses a different audience; manifestation is one
 // continuous argument and reads better tight.
-const BREATH_FRAMES = { manifestation: 10, elements: 24 }
-const HOOK_EXTRA_FRAMES = { manifestation: 4, elements: 14 }
+const BREATH_FRAMES = { manifestation: 10, elements: 24, daily: 8 }
+const HOOK_EXTRA_FRAMES = { manifestation: 4, elements: 14, daily: 10 }
 const PORT = Number(process.env.PORT || 3123)
 const SELF = process.env.PUBLIC_HOST || `http://127.0.0.1:${PORT}`
 
@@ -45,9 +45,19 @@ console.log('Bundling Remotion project…')
 const serveUrl = await bundle({ entryPoint: join(ROOT, 'src', 'index.jsx') })
 console.log('Bundle ready.')
 
-const COMPOSITION_ID = { manifestation: 'ManifestationReel', elements: 'ElementsReel' }
+const COMPOSITION_ID = { manifestation: 'ManifestationReel', elements: 'ElementsReel', daily: 'DailyReel' }
 
 function spokenLines(composition, script) {
+  if (composition === 'daily') {
+    // Beat-structured reel: `say` is narrated, `show` is the on-screen punch.
+    // They are deliberately different strings — never a transcript.
+    return [
+      { kind: 'hook', text: script.hook, show: script.hook_show || script.hook },
+      ...(script.beats || []).map((b) => ({ kind: 'beat', text: b.say, show: b.show })),
+      { kind: 'payoff', text: script.payoff, show: script.payoff },
+      { kind: 'cta', text: script.share_cta, show: script.share_cta },
+    ]
+  }
   if (composition === 'manifestation') {
     return [
       { kind: 'hook', text: script.hook },
@@ -122,7 +132,7 @@ async function runJob({ composition, date }) {
   const payload = typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload
   const jobDate = row.date
   const script = payload?.reel_scripts?.[composition]
-  if (!script) throw new Error(`No reel_scripts.${composition} in payload for ${jobDate} — run Daily Workflow v8.5 first.`)
+  if (!script) throw new Error(`No reel_scripts.${composition} in payload for ${jobDate} — run the daily workflow first.`)
 
   await upsertRender({ date: jobDate, composition, status: 'rendering', video_url: null, error: null, caption: script.caption || '' })
 
@@ -166,6 +176,9 @@ async function runJob({ composition, date }) {
     lines,
     seed,
     dateLabel,
+    // Rotates daily from the workflow so the account never reads as one
+    // template on repeat; unknown values fall back to the brand default.
+    styleVariant: script.style_variant || payload?.style_variant || 'grain_photo',
     ambientSrc: existsSync(ambientPath) ? `${SELF}/audio/ambient.mp3` : null,
   }
   const comp = await selectComposition({ serveUrl, id: COMPOSITION_ID[composition], inputProps })
