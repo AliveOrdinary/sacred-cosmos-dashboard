@@ -1,404 +1,99 @@
-import { useRef, useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { RefreshCw, LogOut, Loader2, Sparkles, Wand2, Send, Clapperboard, LayoutGrid, ChevronDown } from 'lucide-react'
-
-import { useFabricCanvas } from "@/hooks/useFabricCanvas.jsx"
-import { useSlides } from "@/hooks/useSlides"
-import { useCosmicData } from "@/hooks/useCosmicData"
+import { useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
-import { usePublish } from "@/hooks/usePublish"
-
-import { CanvasArea } from "@/components/editor/CanvasArea"
-import { SlideTray } from "@/components/editor/SlideTray"
-import { EditorToolsCard } from "@/components/editor/EditorToolsCard"
-import { DataFeedCard } from "@/components/editor/DataFeedCard"
-import { PostCaptionCard } from "@/components/editor/PostCaptionCard"
-import { LoginPage } from "@/components/LoginPage"
-import { MobileToolsPanel } from "@/components/editor/MobileToolsPanel"
-import { ReelPanel } from "@/components/editor/ReelPanel"
+import { useReelScript } from "@/hooks/useReelScript"
 import { useReelRender } from "@/hooks/useReelRender"
+import { LoginPage } from "@/components/LoginPage"
+import { ScriptCard } from "@/components/reel/ScriptCard"
+import { RenderCard } from "@/components/reel/RenderCard"
 
-function Dashboard({ user, signOut }) {
-  const canvasRef = useRef(null)
-  
-  // mobileTab tracks which tool panel is active on mobile. Always visible (Lightroom-style).
-  const [mobileTab, setMobileTab] = useState('generate')
+// Daily review console.
+//
+// The job every morning is small and fixed: watch the render, read the script,
+// copy the caption, get the file onto the phone. Trial Reels can't be posted
+// through the Graph API, so posting is manual and there is no publish button
+// here on purpose.
 
-  // Posts and Reels are separate workflows sharing only the header: posts need
-  // the canvas, generators and caption; reels need none of it. Desktop switches
-  // between them; mobile uses the bottom tab bar. The posts layout is hidden
-  // with CSS rather than unmounted, because unmounting CanvasArea would dispose
-  // the Fabric editor and lose in-progress slides.
-  const [mode, setMode] = useState('posts')
+function Header({ meta, onSignOut }) {
+  return (
+    <header className="flex items-start justify-between gap-4 px-5 pt-6 pb-4">
+      <div className="min-w-0">
+        <h1 className="text-lg font-medium text-slate-100">Today's reel</h1>
+        {meta && (
+          <p className="mt-1 text-xs text-slate-500 truncate">
+            {meta.date}
+            {meta.nakshatra ? ` · ${meta.nakshatra} — ${meta.translation}` : ""}
+            {meta.styleVariant ? ` · ${meta.styleVariant.replace("_", " ")}` : ""}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={onSignOut}
+        className="shrink-0 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+      >
+        Sign out
+      </button>
+    </header>
+  )
+}
 
-  // Canvas Tools is mostly empty until something is selected, so it starts
-  // collapsed and opens itself when an object is picked.
-  const [toolsOpen, setToolsOpen] = useState(false)
+function Dashboard({ signOut }) {
+  const { loading, script, meta, error, reload } = useReelScript()
+  const { job, requestRender } = useReelRender("daily")
+  const [copied, setCopied] = useState(null)
 
-  // Track breakpoint so we render <CanvasArea> in exactly ONE place (prevents ref collision)
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024)
-  useEffect(() => {
-    const mql = window.matchMedia('(min-width: 1024px)')
-    const handler = (e) => setIsMobile(!e.matches)
-    mql.addEventListener('change', handler)
-    return () => mql.removeEventListener('change', handler)
-  }, [])
-
-  // Slide state — editor is passed at call-time to break circular dependency
-  const slideManager = useSlides()
-  const { slides, activeSlideIndex, setSlides, setActiveSlideIndex, currentIndexRef } = slideManager
-
-  // Canvas hook — saveCurrentSlideData bridges the two hooks
-  const saveCurrentSlideData = (editor) => slideManager.saveCurrentSlideData(editor)
-
-  const canvas = useFabricCanvas({ canvasRef, saveCurrentSlideData })
-  const { editor, activeObject, canvasDimensions, setCanvasDimensions, dropzone } = canvas
-  const { getRootProps, getInputProps, open, isDragActive } = dropzone
-
-  // n8n data + carousel generation
-  const data = useCosmicData({ editor, setSlides, setActiveSlideIndex, canvasDimensions, setCanvasDimensions })
-
-  // Publish to social (Supabase Storage → n8n webhook)
-  const publishHook = usePublish()
-
-  // Reel rendering + publishing (homelab Remotion server via /api/render)
-  const reel = useReelRender()
-
-  // Deep-link auto-generate: nudge links open /?generate=<type> and the right
-  // generator runs as soon as cosmic data is loaded. Story types also flip the
-  // publish toggle to Story so one tap less is needed.
-  const autoGenRanRef = useRef(false)
-  useEffect(() => {
-    if (autoGenRanRef.current) return
-    if (!data.cosmicData || data.cosmicData.length === 0) return
-    const gen = new URLSearchParams(window.location.search).get('generate')
-    if (!gen) return
-    autoGenRanRef.current = true
-    const run = {
-      overview: () => data.handleGenerateDailyOverview(),
-      manifestation: () => data.handleGenerateCarousel(),
-      elements: () => data.handleGenerateElementPosts(),
-      signs1: () => data.handleGenerateSignCarousel(1),
-      signs2: () => data.handleGenerateSignCarousel(2),
-      story: () => { publishHook.setPostType('story'); return data.handleGenerateStories() },
-      practice: () => { publishHook.setPostType('story'); return data.handleGenerateSpiritualPractice() },
-      weekly_overview: () => data.handleGenerateWeeklyOverview(),
-      weekly_signs1: () => data.handleGenerateWeeklyCarousel(1),
-      weekly_signs2: () => data.handleGenerateWeeklyCarousel(2),
-      weekly_challenge: () => data.handleGenerateWeeklyChallenge(),
-    }[gen]
-    if (run) run()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.cosmicData])
-
-  useEffect(() => {
-    if (activeObject) setToolsOpen(true)
-  }, [activeObject])
-
-  // Publish shortcut: header button jumps to the publish surface
-  const hasContent = slides.some(sl => (sl.objects?.length ?? 0) > 0)
-  const goToPublish = () => {
-    if (isMobile) {
-      setMobileTab('publish')
-    } else {
-      document.getElementById('publish-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const copy = async (text, key) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(key)
+      setTimeout(() => setCopied(null), 1600)
+    } catch {
+      setCopied("failed")
+      setTimeout(() => setCopied(null), 1600)
     }
   }
 
   return (
-    // Mobile root: full viewport height (100dvh). Desktop: min-h-screen
-    <div className="h-[100dvh] lg:min-h-screen lg:h-auto bg-slate-950 flex flex-col pt-0 lg:p-8 overflow-hidden lg:overflow-visible relative lg:static gap-0 lg:gap-8 hover:!border-none">
+    <div className="min-h-screen bg-slate-950 text-slate-200">
+      <div className="mx-auto max-w-2xl pb-20">
+        <Header meta={meta} onSignOut={signOut} />
 
-      {/* HEADER */}
-      <div className="shrink-0 z-40 bg-slate-950/90 backdrop-blur-md px-3 py-2 lg:px-4 lg:py-3 lg:bg-transparent lg:backdrop-blur-none flex justify-between items-center w-full max-w-7xl mx-auto border-b border-slate-800 lg:border-none">
-        <div>
-          <h1 className="text-lg lg:text-3xl font-bold text-white tracking-tight">Cosmic Editor</h1>
-          <p className="hidden md:block text-slate-400">Design dynamic posts fueled by your n8n automation</p>
-        </div>
-        <div className="flex gap-2 lg:gap-4 items-center">
-          {/* Desktop workflow switch (mobile uses the bottom tab bar) */}
-          <div className="hidden lg:flex items-center rounded-lg bg-slate-900 border border-slate-800 p-0.5">
-            {[
-              { id: 'posts', label: 'Posts', icon: LayoutGrid },
-              { id: 'reels', label: 'Reels', icon: Clapperboard },
-            ].map((m) => (
-              <button
-                key={m.id}
-                onClick={() => setMode(m.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                  mode === m.id ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                <m.icon size={15} />
-                {m.label}
-              </button>
-            ))}
-          </div>
+        {loading && <p className="px-5 py-10 text-sm text-slate-500">Loading today's script…</p>}
 
-          {hasContent && mode === 'posts' && (
-            <Button
-              size="sm"
-              onClick={goToPublish}
-              className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20"
-            >
-              <Send size={15} className="lg:mr-2" /> <span className="hidden lg:inline">Publish</span>
-            </Button>
-          )}
-
-          <div className="flex items-center gap-2 ml-1 lg:ml-2 border-l border-slate-800 pl-2 lg:pl-4">
-            <span className="text-xs text-slate-600 hidden sm:inline">{user?.email}</span>
-            <button
-              onClick={signOut}
-              className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-800 transition-colors"
-              title="Sign out"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-
-      {/* ===================== DESKTOP LAYOUT ===================== */}
-      <div className={`hidden ${mode === 'posts' ? 'lg:grid' : ''} lg:grid-cols-12 gap-8 w-full max-w-7xl mx-auto flex-1 min-h-0 overflow-visible`}>
-
-        {/* RIGHT: Canvas + Slides + Caption */}
-        <div className="lg:col-span-8 flex flex-col gap-6 lg:order-2">
-          {!isMobile && (
-            <div className="flex-1 min-h-0 flex items-center justify-center relative">
-              <CanvasArea
-                canvasRef={canvasRef}
-                canvasDimensions={canvasDimensions}
-                activeSlideIndex={activeSlideIndex}
-                isDragActive={isDragActive}
-                getRootProps={getRootProps}
-                getInputProps={getInputProps}
-              />
-            </div>
-          )}
-          <SlideTray
-            slides={slides}
-            activeSlideIndex={activeSlideIndex}
-            switchSlide={(idx) => slideManager.switchSlide(editor, idx)}
-            addNewSlide={() => slideManager.addNewSlide(editor)}
-            duplicateSlide={(idx, e) => slideManager.duplicateSlide(editor, idx, e)}
-            deleteSlide={(idx, e) => slideManager.deleteSlide(editor, idx, e)}
-          />
-          <div id="publish-card">
-          <PostCaptionCard
-            postCaption={data.postCaption}
-            setPostCaption={data.setPostCaption}
-            isCopied={data.isCopied}
-            handleCopyCaption={data.handleCopyCaption}
-            cosmicData={data.cosmicData}
-            editor={editor}
-            slides={slides}
-            currentIndexRef={currentIndexRef}
-            publish={publishHook.publish}
-            isPublishing={publishHook.isPublishing}
-            publishStatus={publishHook.publishStatus}
-            publishMessage={publishHook.publishMessage}
-            selectedPlatforms={publishHook.selectedPlatforms}
-            togglePlatform={publishHook.togglePlatform}
-            postType={publishHook.postType}
-            setPostType={publishHook.setPostType}
-            resetPublishStatus={publishHook.resetPublishStatus}
-          />
-          </div>
-        </div>
-
-        {/* LEFT: Tool cards — generators first, canvas tools collapsed below */}
-        <div className="lg:col-span-4 flex flex-col gap-6 lg:order-1">
-          <DataFeedCard
-            cosmicData={data.cosmicData}
-            addText={canvas.addText}
-            handleGenerateCarousel={data.handleGenerateCarousel}
-            handleGenerateSignCarousel={data.handleGenerateSignCarousel}
-            handleGenerateElementPosts={data.handleGenerateElementPosts}
-            handleGenerateStories={data.handleGenerateStories}
-            handleGenerateWeeklyCarousel={data.handleGenerateWeeklyCarousel}
-            handleGenerateWeeklyOverview={data.handleGenerateWeeklyOverview}
-            handleGenerateWeeklyChallenge={data.handleGenerateWeeklyChallenge}
-            handleGenerateSpiritualPractice={data.handleGenerateSpiritualPractice}
-            handleGenerateDailyOverview={data.handleGenerateDailyOverview}
-          />
-
-          <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
-            <button
-              onClick={() => setToolsOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-4 py-3 text-sm text-slate-300 hover:bg-slate-800/50 transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <Wand2 size={15} className="text-indigo-400" /> Canvas Tools
-                {activeObject && <span className="text-[10px] text-indigo-400">object selected</span>}
-              </span>
-              <ChevronDown size={16} className={`transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {toolsOpen && (
-              <div className="border-t border-slate-800">
-                <EditorToolsCard
-                  addText={canvas.addText}
-                  bringForward={canvas.bringForward}
-                  sendBackward={canvas.sendBackward}
-                  duplicateSelected={canvas.duplicateSelected}
-                  deleteSelected={canvas.deleteSelected}
-                  updateActiveObjectProp={canvas.updateActiveObjectProp}
-                  activeObject={activeObject}
-                  editor={editor}
-                  open={open}
-                  getInputProps={getInputProps}
-                />
-              </div>
+        {!loading && error && (
+          <div className="mx-5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+            <p className="text-sm text-amber-300">{error}</p>
+            {meta?.failure && (
+              <p className="mt-2 text-xs text-amber-200/70">
+                {meta.failure.error_details} · stop_reason: {meta.failure.stop_reason}
+              </p>
             )}
-          </div>
-
-        </div>
-      </div>
-
-      {/* ===================== DESKTOP: REELS VIEW ===================== */}
-      {mode === 'reels' && (
-        <div className="hidden lg:block w-full max-w-7xl mx-auto flex-1 min-h-0 overflow-y-auto pb-8">
-          <ReelPanel cosmicData={data.cosmicData} reel={reel} variant="wide" />
-        </div>
-      )}
-
-      {/* ===================== MOBILE LAYOUT ===================== */}
-      {/* Lightroom-style: Canvas (above) → Slide tray → Tool content → Tab bar at bottom */}
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden lg:hidden">
-
-        {/* CANVAS — fixed height, only rendered on mobile */}
-        {isMobile && (
-          <div className={`shrink-0 h-[48vh] items-center justify-center px-1 ${mobileTab === 'reels' ? 'hidden' : 'flex'}`}>
-            <CanvasArea
-              canvasRef={canvasRef}
-              canvasDimensions={canvasDimensions}
-              activeSlideIndex={activeSlideIndex}
-              isDragActive={isDragActive}
-              getRootProps={getRootProps}
-              getInputProps={getInputProps}
-            />
+            <button
+              onClick={reload}
+              className="mt-3 rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+            >
+              Reload
+            </button>
           </div>
         )}
 
-        {/* SLIDE TRAY — compact, right below canvas */}
-        <div className={`shrink-0 px-2 py-1 ${mobileTab === 'reels' ? 'hidden' : ''}`}>
-          <SlideTray
-            slides={slides}
-            activeSlideIndex={activeSlideIndex}
-            switchSlide={(idx) => slideManager.switchSlide(editor, idx)}
-            addNewSlide={() => slideManager.addNewSlide(editor)}
-            duplicateSlide={(idx, e) => slideManager.duplicateSlide(editor, idx, e)}
-            deleteSlide={(idx, e) => slideManager.deleteSlide(editor, idx, e)}
-          />
-        </div>
-
-        {/* TOOL CONTENT — fills space between slide tray and tab bar */}
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-          <MobileToolsPanel
-            activeTab={mobileTab}
-            // Generate panel props
-            cosmicData={data.cosmicData}
-            addText={canvas.addText}
-            handlers={{
-              handleGenerateCarousel: data.handleGenerateCarousel,
-              handleGenerateSignCarousel: data.handleGenerateSignCarousel,
-              handleGenerateElementPosts: data.handleGenerateElementPosts,
-              handleGenerateStories: data.handleGenerateStories,
-              handleGenerateWeeklyCarousel: data.handleGenerateWeeklyCarousel,
-              handleGenerateWeeklyOverview: data.handleGenerateWeeklyOverview,
-              handleGenerateWeeklyChallenge: data.handleGenerateWeeklyChallenge,
-              handleGenerateSpiritualPractice: data.handleGenerateSpiritualPractice,
-              handleGenerateDailyOverview: data.handleGenerateDailyOverview,
-            }}
-            // Tools panel props
-            canvasDimensions={canvasDimensions}
-            setCanvasDimensions={setCanvasDimensions}
-            addRect={canvas.addRect}
-            addCircle={canvas.addCircle}
-            addTriangle={canvas.addTriangle}
-            addIcon={canvas.addIcon}
-            bringForward={canvas.bringForward}
-            sendBackward={canvas.sendBackward}
-            duplicateSelected={canvas.duplicateSelected}
-            deleteSelected={canvas.deleteSelected}
-            fillBackgroundWithImage={canvas.fillBackgroundWithImage}
-            updateActiveObjectProp={canvas.updateActiveObjectProp}
-            updateBackgroundColor={canvas.updateBackgroundColor}
-            updateGradientBackground={canvas.updateGradientBackground}
-            activeObject={activeObject}
-            editor={editor}
-            open={open}
-            getInputProps={getInputProps}
-            // Caption panel props
-            postCaption={data.postCaption}
-            setPostCaption={data.setPostCaption}
-            isCopied={data.isCopied}
-            handleCopyCaption={data.handleCopyCaption}
-            currentIndexRef={currentIndexRef}
-            publish={publishHook.publish}
-            isPublishing={publishHook.isPublishing}
-            publishStatus={publishHook.publishStatus}
-            publishMessage={publishHook.publishMessage}
-            selectedPlatforms={publishHook.selectedPlatforms}
-            togglePlatform={publishHook.togglePlatform}
-            postType={publishHook.postType}
-            setPostType={publishHook.setPostType}
-            resetPublishStatus={publishHook.resetPublishStatus}
-            isLoading={data.isLoading}
-            slides={slides}
-          />
-          {mobileTab === 'reels' && (
-            <div className="px-2 py-3 pb-6">
-              <ReelPanel cosmicData={data.cosmicData} reel={reel} />
-            </div>
-          )}
-        </div>
-
-        {/* BOTTOM TAB BAR — pinned at the very bottom */}
-        <div className="shrink-0 bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 pb-safe">
-          <div className="flex items-center justify-around px-1">
-            {[
-              { id: 'generate', icon: Sparkles, label: 'Generate', activeColor: 'text-amber-400' },
-              { id: 'edit', icon: Wand2, label: 'Tools', activeColor: 'text-indigo-400' },
-              { id: 'reels', icon: Clapperboard, label: 'Reels', activeColor: 'text-rose-400' },
-              { id: 'publish', icon: Send, label: 'Publish', activeColor: 'text-violet-400' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setMobileTab(tab.id)}
-                className={`flex flex-col items-center justify-center gap-0.5 py-2 px-3 transition-colors ${
-                  mobileTab === tab.id ? tab.activeColor : 'text-slate-600'
-                }`}
-              >
-                <tab.icon size={20} />
-                <span className="text-[10px] font-medium">{tab.label}</span>
-              </button>
-            ))}
+        {!loading && script && (
+          <div className="space-y-4 px-5">
+            <RenderCard job={job} onRender={requestRender} />
+            <ScriptCard script={script} lens={meta?.lens} copied={copied} onCopy={copy} />
           </div>
-        </div>
-
+        )}
       </div>
     </div>
   )
 }
 
-function App() {
-  const { session, user, isLoading: authLoading, signIn, signOut } = useAuth()
-
-  // --- AUTH GATE ---
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-violet-500" />
-      </div>
-    )
+export default function App() {
+  const { session, isLoading, signIn, signOut } = useAuth()
+  if (isLoading) {
+    return <div className="min-h-screen bg-slate-950" />
   }
-
   if (!session) {
     return <LoginPage signIn={signIn} />
   }
-
-  return <Dashboard user={user} signOut={signOut} />
+  return <Dashboard signOut={signOut} />
 }
-
-export default App
